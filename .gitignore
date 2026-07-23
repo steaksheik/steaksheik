@@ -48,3 +48,7 @@ yarn-error.log*
 # Editor
 .vscode/
 .idea/
+
+# Auto-generated document formats
+*.pdf
+*.docx
