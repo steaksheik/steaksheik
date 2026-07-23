@@ -75,7 +75,9 @@ async function main() {
   const passwordHash = await bcrypt.hash(adminPassword, 12);
   const admin = await prisma.user.upsert({
     where: { tenantId_email: { tenantId: tenant.id, email: adminEmail } },
-    update: {},
+    // Keep the admin password in sync with ADMIN_PASSWORD on every seed so the
+    // configured credentials always work, even if the user already existed.
+    update: { passwordHash, status: 'ACTIVE', emailVerified: true },
     create: {
       tenantId: tenant.id,
       email: adminEmail,
