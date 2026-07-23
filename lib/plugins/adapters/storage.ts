@@ -260,4 +260,20 @@ export class LocalStorageAdapter extends FallbackAdapter implements IStorageAdap
   async getSignedUrl(key: string): Promise<string> {
     return this.getPublicUrl(key);
   }
+
+  /**
+   * The local fallback cannot durably persist files on serverless hosting
+   * (Vercel). Rather than silently "succeed" and hand back a URL that will
+   * 404, it refuses with a clear message so the admin knows S3 must be fixed.
+   */
+  async upload(
+    key: string,
+  ): Promise<{ success: boolean; key: string; url?: string; error?: string }> {
+    return {
+      success: false,
+      key,
+      error:
+        'File storage is not connected. Configure Amazon S3 in Admin → Services (a valid Access Key, Secret, bucket and region) before uploading media.',
+    };
+  }
 }

@@ -1,13 +1,14 @@
-import { getDefaultTenant, getBrand, getProducts, formatPrice } from '@/lib/storefront';
+import { getDefaultTenant, getBrand, getProducts, getHero, formatPrice } from '@/lib/storefront';
 import { HomeClient, type StoreProduct } from './home-client';
 
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const tenant = await getDefaultTenant();
-  const [brand, steakProducts] = await Promise.all([
+  const [brand, steakProducts, hero] = await Promise.all([
     getBrand(tenant.id),
     getProducts(tenant.id, 'steaks'),
+    getHero(tenant.id),
   ]);
 
   const brandName = brand?.name ?? 'The Steak Sheikh';
@@ -20,5 +21,5 @@ export default async function HomePage() {
     imageUrl: p.images[0]?.url ?? null,
   }));
 
-  return <HomeClient brandName={brandName} steaks={steaks} />;
+  return <HomeClient brandName={brandName} steaks={steaks} hero={hero} />;
 }

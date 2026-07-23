@@ -15,6 +15,57 @@ export async function getBrand(tenantId: string) {
   });
 }
 
+export interface HeroSlide {
+  type: 'image' | 'video';
+  url: string;
+  alt?: string | null;
+}
+export interface HeroConfig {
+  enabled: boolean;
+  slides: HeroSlide[];
+  autoplayMs: number;
+  headline?: string | null;
+  subheadline?: string | null;
+  ctaText?: string | null;
+  ctaHref?: string | null;
+  secondaryCtaText?: string | null;
+  secondaryCtaHref?: string | null;
+  overlay: boolean;
+}
+
+/**
+ * Fetch the storefront hero configuration (HomepageSection type=HERO).
+ * Returns null when no hero has been configured yet — the storefront then
+ * falls back to its built-in default hero.
+ */
+export async function getHero(tenantId: string): Promise<HeroConfig | null> {
+  const section = await prisma.homepageSection.findUnique({
+    where: { tenantId_type: { tenantId, type: 'HERO' } },
+  });
+  if (!section || !section.isVisible) return null;
+
+  const c = (section.content ?? {}) as Record<string, unknown>;
+  const slides = Array.isArray(c.slides)
+    ? (c.slides as HeroSlide[]).filter(
+        (s) => s && (s.type === 'image' || s.type === 'video') && typeof s.url === 'string',
+      )
+    : [];
+  if (slides.length === 0) return null;
+
+  return {
+    enabled: true,
+    slides,
+    autoplayMs: typeof c.autoplayMs === 'number' ? c.autoplayMs : 6000,
+    headline: (c.headline as string) ?? null,
+    subheadline: (c.subheadline as string) ?? null,
+    ctaText: (c.ctaText as string) ?? null,
+    ctaHref: (c.ctaHref as string) ?? null,
+    secondaryCtaText: (c.secondaryCtaText as string) ?? null,
+    secondaryCtaHref: (c.secondaryCtaHref as string) ?? null,
+    overlay: c.overlay !== false,
+  };
+}
+
 /** Fetch all active categories with product count. */
 export async function getCategories(tenantId: string) {
   return prisma.category.findMany({

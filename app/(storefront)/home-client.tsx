@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import type { HeroConfig } from '@/lib/storefront';
 import {
   Flame,
   Truck,
@@ -46,12 +47,98 @@ const IMG = {
 
 const ACCENT = '#c9a96e';
 
+/**
+ * Hero background: renders a single image/video or an auto-advancing
+ * slideshow of mixed image + video slides. Falls back to the default
+ * marketing image when no slides are configured.
+ */
+function HeroBackground({ hero }: { hero: HeroConfig | null }) {
+  const slides = hero?.slides ?? [];
+  const [idx, setIdx] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const ms = hero?.autoplayMs ?? 6000;
+    const t = setInterval(() => setIdx((i) => (i + 1) % slides.length), ms);
+    return () => clearInterval(t);
+  }, [slides.length, hero?.autoplayMs]);
+
+  // No configured slides → default image.
+  if (slides.length === 0) {
+    return (
+      <>
+        <img
+          src={IMG.hero}
+          alt="Premium grilled steak"
+          className="h-full w-full object-cover object-right opacity-90"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/85 to-transparent" />
+      </>
+    );
+  }
+
+  return (
+    <>
+      {slides.map((s, i) => (
+        <div
+          key={`${s.url}-${i}`}
+          className="absolute inset-0 transition-opacity duration-1000"
+          style={{ opacity: i === idx ? 1 : 0 }}
+          aria-hidden={i === idx ? undefined : true}
+        >
+          {s.type === 'video' ? (
+            <video
+              ref={i === idx ? videoRef : undefined}
+              src={s.url}
+              className="h-full w-full object-cover object-center opacity-90"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={s.url}
+              alt={s.alt ?? 'Hero slide'}
+              className="h-full w-full object-cover object-right opacity-90"
+            />
+          )}
+        </div>
+      ))}
+      {hero?.overlay !== false && (
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/85 to-transparent" />
+      )}
+      {slides.length > 1 && (
+        <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+          {slides.map((_, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => setIdx(i)}
+              aria-label={`Go to slide ${i + 1}`}
+              className="h-2 rounded-full transition-all"
+              style={{
+                width: i === idx ? 20 : 8,
+                backgroundColor: i === idx ? ACCENT : 'rgba(255,255,255,0.5)',
+              }}
+            />
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function HomeClient({
   brandName,
   steaks,
+  hero = null,
 }: {
   brandName: string;
   steaks: StoreProduct[];
+  hero?: HeroConfig | null;
 }) {
   const soon = (label: string) => toast.info(`${label} — coming soon`);
   const [nlName, setNlName] = useState('');
@@ -73,31 +160,37 @@ export function HomeClient({
       {/* ══ HERO ══ */}
       <section className="relative bg-[#0a0a0a] text-white overflow-hidden">
         <div className="absolute inset-0">
-          <img src={IMG.hero} alt="Premium grilled steak" className="h-full w-full object-cover object-right opacity-90" />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/85 to-transparent" />
+          <HeroBackground hero={hero} />
         </div>
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32">
           <div className="max-w-xl">
             <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight">
-              PREMIUM STEAK.<br />
-              <span style={{ color: ACCENT }}>PERFECTLY DELIVERED.</span>
+              {hero?.headline ? (
+                <span className="whitespace-pre-line">{hero.headline}</span>
+              ) : (
+                <>
+                  PREMIUM STEAK.<br />
+                  <span style={{ color: ACCENT }}>PERFECTLY DELIVERED.</span>
+                </>
+              )}
             </h1>
             <p className="mt-5 text-base sm:text-lg text-white/70 max-w-md">
-              Restaurant quality steaks, sides and sauces delivered hot to your door.
+              {hero?.subheadline ??
+                'Restaurant quality steaks, sides and sauces delivered hot to your door.'}
             </p>
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
-                href="/menu"
+                href={hero?.ctaHref || '/menu'}
                 className="inline-flex items-center gap-2 rounded-md px-7 py-3.5 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.03]"
                 style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
               >
-                Order Now
+                {hero?.ctaText || 'Order Now'}
               </Link>
               <Link
-                href="/menu"
+                href={hero?.secondaryCtaHref || '/menu'}
                 className="inline-flex items-center gap-2 rounded-md border border-white/30 px-7 py-3.5 text-sm font-bold uppercase tracking-wide text-white hover:bg-white/10 transition-colors"
               >
-                View Menu
+                {hero?.secondaryCtaText || 'View Menu'}
               </Link>
             </div>
             <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">

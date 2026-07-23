@@ -10,7 +10,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { MediaUpload, type UploadedMedia } from '@/components/admin/media-upload';
 import {
   Palette,
   Type,
@@ -20,7 +22,9 @@ import {
   Eye,
   RefreshCw,
   Trash2,
-  Upload,
+  Clapperboard,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 interface Brand {
@@ -55,6 +59,36 @@ interface BrandAsset {
   altText: string | null;
   sortOrder: number;
 }
+
+interface HeroSlide {
+  type: 'image' | 'video';
+  url: string;
+  alt?: string | null;
+}
+interface HeroState {
+  enabled: boolean;
+  slides: HeroSlide[];
+  autoplayMs: number;
+  headline: string;
+  subheadline: string;
+  ctaText: string;
+  ctaHref: string;
+  secondaryCtaText: string;
+  secondaryCtaHref: string;
+  overlay: boolean;
+}
+const DEFAULT_HERO: HeroState = {
+  enabled: true,
+  slides: [],
+  autoplayMs: 6000,
+  headline: '',
+  subheadline: '',
+  ctaText: '',
+  ctaHref: '',
+  secondaryCtaText: '',
+  secondaryCtaHref: '',
+  overlay: true,
+};
 
 const GOOGLE_FONTS = [
   'Inter', 'DM Sans', 'Plus Jakarta Sans', 'Poppins', 'Montserrat',
@@ -105,6 +139,10 @@ export default function BrandingPage() {
   const [logoUrl, setLogoUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
 
+  // Hero state
+  const [hero, setHero] = useState<HeroState>(DEFAULT_HERO);
+  const [savingHero, setSavingHero] = useState(false);
+
   // Theme state
   const [primaryColor, setPrimaryColor] = useState('#000000');
   const [secondaryColor, setSecondaryColor] = useState('#ffffff');
@@ -153,9 +191,102 @@ export default function BrandingPage() {
     }
   }, [authHeaders]);
 
+  const loadHero = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/branding/hero', {
+        credentials: 'include',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      const h = data.data?.hero;
+      if (h) {
+        setHero({
+          enabled: h.enabled ?? true,
+          slides: Array.isArray(h.slides)
+            ? h.slides.map((s: HeroSlide) => ({ type: s.type, url: s.url, alt: s.alt ?? '' }))
+            : [],
+          autoplayMs: h.autoplayMs ?? 6000,
+          headline: h.headline ?? '',
+          subheadline: h.subheadline ?? '',
+          ctaText: h.ctaText ?? '',
+          ctaHref: h.ctaHref ?? '',
+          secondaryCtaText: h.secondaryCtaText ?? '',
+          secondaryCtaHref: h.secondaryCtaHref ?? '',
+          overlay: h.overlay ?? true,
+        });
+      }
+    } catch {
+      /* non-fatal: keep defaults */
+    }
+  }, [authHeaders]);
+
   useEffect(() => {
     loadBrand();
-  }, [loadBrand]);
+    loadHero();
+  }, [loadBrand, loadHero]);
+
+  async function saveHero() {
+    setSavingHero(true);
+    try {
+      const res = await fetch('/api/v1/branding/hero', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          enabled: hero.enabled,
+          slides: hero.slides.map((s) => ({
+            type: s.type,
+            url: s.url,
+            alt: (s.alt ?? '').trim() || null,
+          })),
+          autoplayMs: hero.autoplayMs,
+          headline: hero.headline.trim() || null,
+          subheadline: hero.subheadline.trim() || null,
+          ctaText: hero.ctaText.trim() || null,
+          ctaHref: hero.ctaHref.trim() || null,
+          secondaryCtaText: hero.secondaryCtaText.trim() || null,
+          secondaryCtaHref: hero.secondaryCtaHref.trim() || null,
+          overlay: hero.overlay,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Hero saved');
+      } else {
+        toast.error(data.error?.message ?? 'Failed to save hero');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setSavingHero(false);
+    }
+  }
+
+  // Hero slide helpers
+  function addHeroSlide(media: UploadedMedia) {
+    setHero((h) => ({
+      ...h,
+      slides: [...h.slides, { type: media.kind, url: media.url, alt: '' }],
+    }));
+  }
+  function removeHeroSlide(idx: number) {
+    setHero((h) => ({ ...h, slides: h.slides.filter((_, i) => i !== idx) }));
+  }
+  function moveHeroSlide(idx: number, dir: -1 | 1) {
+    setHero((h) => {
+      const next = [...h.slides];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return h;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return { ...h, slides: next };
+    });
+  }
+  function updateSlideAlt(idx: number, alt: string) {
+    setHero((h) => ({
+      ...h,
+      slides: h.slides.map((s, i) => (i === idx ? { ...s, alt } : s)),
+    }));
+  }
 
   async function saveBrand() {
     setSaving(true);
@@ -241,10 +372,14 @@ export default function BrandingPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-xl">
           <TabsTrigger value="general" className="gap-1.5">
             <Palette className="h-3.5 w-3.5" />
             General
+          </TabsTrigger>
+          <TabsTrigger value="hero" className="gap-1.5">
+            <Clapperboard className="h-3.5 w-3.5" />
+            Hero
           </TabsTrigger>
           <TabsTrigger value="theme" className="gap-1.5">
             <Type className="h-3.5 w-3.5" />
@@ -308,34 +443,42 @@ export default function BrandingPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="logo">Logo URL</Label>
+                  <Label htmlFor="logo">Logo</Label>
+                  <MediaUpload
+                    accept="image"
+                    folder="branding"
+                    value={logoUrl || null}
+                    onUploaded={(m) => setLogoUrl(m.url)}
+                    onClear={() => setLogoUrl('')}
+                    disabled={!canWrite}
+                    compact
+                  />
                   <Input
                     id="logo"
                     value={logoUrl}
                     onChange={(e) => setLogoUrl(e.target.value)}
-                    placeholder="https://play-lh.googleusercontent.com/ToENLnH5MT2YwO_4slfJ8kP9FrJqMNspDTYHpUiy5r0dlFtcPBqD8ZbD_wel-bvjGsk6HCOd_TQlbqTSngY4mA=w526-h296-rw"
+                    placeholder="…or paste an image URL"
                     disabled={!canWrite}
                   />
-                  {logoUrl && (
-                    <div className="mt-2 flex h-16 items-center justify-center rounded-lg border bg-muted/30 p-2">
-                      <img src={logoUrl} alt="Logo preview" className="max-h-full max-w-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    </div>
-                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="favicon">Favicon URL</Label>
+                  <Label htmlFor="favicon">Favicon</Label>
+                  <MediaUpload
+                    accept="image"
+                    folder="branding"
+                    value={faviconUrl || null}
+                    onUploaded={(m) => setFaviconUrl(m.url)}
+                    onClear={() => setFaviconUrl('')}
+                    disabled={!canWrite}
+                    compact
+                  />
                   <Input
                     id="favicon"
                     value={faviconUrl}
                     onChange={(e) => setFaviconUrl(e.target.value)}
-                    placeholder="https://upload.wikimedia.org/wikipedia/commons/2/22/Wikipedia_favicon_in_Firefox_on_KDE_%282023%29.png"
+                    placeholder="…or paste an image URL"
                     disabled={!canWrite}
                   />
-                  {faviconUrl && (
-                    <div className="mt-2 flex h-16 items-center justify-center rounded-lg border bg-muted/30 p-2">
-                      <img src={faviconUrl} alt="Favicon preview" className="max-h-full max-w-full object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    </div>
-                  )}
                 </div>
               </div>
             </CardContent>
@@ -346,6 +489,254 @@ export default function BrandingPage() {
               <Button onClick={saveBrand} disabled={saving || !name.trim()}>
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Brand Settings
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Hero ── */}
+        <TabsContent value="hero" className="space-y-6 mt-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Homepage Hero</CardTitle>
+              <CardDescription>
+                The large banner at the top of your storefront. Add one image or video, or several to create an
+                auto-playing slideshow. You can mix images and videos.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Enable + overlay toggles */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={hero.enabled}
+                    onCheckedChange={(v) => setHero((h) => ({ ...h, enabled: v }))}
+                    disabled={!canWrite}
+                  />
+                  <div>
+                    <Label className="text-sm">Show custom hero</Label>
+                    <p className="text-xs text-muted-foreground">
+                      When off, the default hero background is used.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={hero.overlay}
+                    onCheckedChange={(v) => setHero((h) => ({ ...h, overlay: v }))}
+                    disabled={!canWrite}
+                  />
+                  <div>
+                    <Label className="text-sm">Dark overlay</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Improves text readability over media.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Add media */}
+              <div className="space-y-2">
+                <Label className="text-sm">Add a slide (image or video)</Label>
+                <MediaUpload
+                  accept="both"
+                  folder="hero"
+                  onUploaded={addHeroSlide}
+                  disabled={!canWrite}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Images: JPG, PNG, WebP, GIF, SVG, AVIF (max 10&nbsp;MB). Videos: MP4, WebM, MOV (max 60&nbsp;MB).
+                </p>
+              </div>
+
+              {/* Slide list */}
+              {hero.slides.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">
+                      Slides <Badge variant="secondary" className="ml-1">{hero.slides.length}</Badge>
+                    </Label>
+                    {hero.slides.length > 1 && (
+                      <span className="text-xs text-muted-foreground">Slideshow — drag order with the arrows</span>
+                    )}
+                  </div>
+                  {hero.slides.map((slide, idx) => (
+                    <div
+                      key={`${slide.url}-${idx}`}
+                      className="flex gap-3 rounded-lg border p-3"
+                    >
+                      <div className="h-20 w-28 shrink-0 overflow-hidden rounded-md border bg-muted/30">
+                        {slide.type === 'video' ? (
+                          <video src={slide.url} className="h-full w-full object-cover" muted playsInline />
+                        ) : (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={slide.url} alt={slide.alt ?? ''} className="h-full w-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex flex-1 flex-col gap-1.5">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="gap-1 text-[10px] uppercase">
+                            {slide.type === 'video' ? <Clapperboard className="h-3 w-3" /> : <ImageIcon className="h-3 w-3" />}
+                            {slide.type}
+                          </Badge>
+                          <span className="truncate text-xs text-muted-foreground">{slide.url}</span>
+                        </div>
+                        <Input
+                          value={slide.alt ?? ''}
+                          onChange={(e) => updateSlideAlt(idx, e.target.value)}
+                          placeholder="Alt text (for accessibility / SEO)"
+                          className="h-8 text-xs"
+                          disabled={!canWrite}
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => moveHeroSlide(idx, -1)}
+                          disabled={!canWrite || idx === 0}
+                        >
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => moveHeroSlide(idx, 1)}
+                          disabled={!canWrite || idx === hero.slides.length - 1}
+                        >
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => removeHeroSlide(idx)}
+                          disabled={!canWrite}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  No slides yet. Add an image or video above, or leave empty to use the default hero.
+                </div>
+              )}
+
+              {/* Autoplay interval (only relevant for 2+ slides) */}
+              {hero.slides.length > 1 && (
+                <div className="space-y-2">
+                  <Label htmlFor="autoplay" className="text-sm">Slideshow interval (seconds)</Label>
+                  <Input
+                    id="autoplay"
+                    type="number"
+                    min={2}
+                    max={30}
+                    step={1}
+                    value={Math.round(hero.autoplayMs / 1000)}
+                    onChange={(e) => {
+                      const secs = Math.min(30, Math.max(2, Number(e.target.value) || 6));
+                      setHero((h) => ({ ...h, autoplayMs: secs * 1000 }));
+                    }}
+                    className="w-32"
+                    disabled={!canWrite}
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Text overrides */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Hero Text & Buttons</CardTitle>
+              <CardDescription>
+                Leave any field blank to keep the current default text.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="headline">Headline</Label>
+                <Textarea
+                  id="headline"
+                  value={hero.headline}
+                  onChange={(e) => setHero((h) => ({ ...h, headline: e.target.value }))}
+                  placeholder="Premium cuts,&#10;delivered to your door."
+                  rows={2}
+                  disabled={!canWrite}
+                />
+                <p className="text-xs text-muted-foreground">Line breaks are preserved.</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="subheadline">Subheadline</Label>
+                <Textarea
+                  id="subheadline"
+                  value={hero.subheadline}
+                  onChange={(e) => setHero((h) => ({ ...h, subheadline: e.target.value }))}
+                  placeholder="Chef-crafted meals, delivered hot."
+                  rows={2}
+                  disabled={!canWrite}
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="ctaText">Primary button text</Label>
+                  <Input
+                    id="ctaText"
+                    value={hero.ctaText}
+                    onChange={(e) => setHero((h) => ({ ...h, ctaText: e.target.value }))}
+                    placeholder="Order Now"
+                    disabled={!canWrite}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ctaHref">Primary button link</Label>
+                  <Input
+                    id="ctaHref"
+                    value={hero.ctaHref}
+                    onChange={(e) => setHero((h) => ({ ...h, ctaHref: e.target.value }))}
+                    placeholder="/menu"
+                    disabled={!canWrite}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="secondaryCtaText">Secondary button text</Label>
+                  <Input
+                    id="secondaryCtaText"
+                    value={hero.secondaryCtaText}
+                    onChange={(e) => setHero((h) => ({ ...h, secondaryCtaText: e.target.value }))}
+                    placeholder="View Menu"
+                    disabled={!canWrite}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="secondaryCtaHref">Secondary button link</Label>
+                  <Input
+                    id="secondaryCtaHref"
+                    value={hero.secondaryCtaHref}
+                    onChange={(e) => setHero((h) => ({ ...h, secondaryCtaHref: e.target.value }))}
+                    placeholder="/about"
+                    disabled={!canWrite}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button onClick={saveHero} disabled={savingHero}>
+                {savingHero ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Hero
               </Button>
             </div>
           )}

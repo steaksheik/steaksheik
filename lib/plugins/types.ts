@@ -68,7 +68,19 @@ export interface StorageResult {
   key: string;
   url?: string;
 }
+export interface StorageUploadResult {
+  success: boolean;
+  key: string;
+  url?: string;
+  error?: string;
+}
 export interface IStorageAdapter extends IPluginAdapter {
+  upload(
+    key: string,
+    body: Buffer | Uint8Array,
+    contentType: string,
+    extra?: Record<string, unknown>,
+  ): Promise<StorageUploadResult>;
   getSignedUrl(key: string, expiresIn?: number): Promise<string>;
   getPublicUrl(key: string): string;
 }
