@@ -109,16 +109,23 @@ export default function ServicesPage() {
           headers: authHeaders(),
         });
         const data = await res.json();
-        const cfg = (data.data?.service?.config ?? {}) as Record<string, unknown>;
-        // Prefill only non-secret config settings; credentials stay blank/masked.
-        // Apply declared defaults when no stored value exists (e.g. provider=ses).
+        const svcData = (data.data?.service ?? {}) as Record<string, unknown>;
+        const cfg = (svcData.config ?? {}) as Record<string, unknown>;
+        const creds = (svcData.credentials ?? {}) as Record<string, unknown>;
+        // Pre-fill every NON-secret field from its stored value (config or
+        // non-secret credential) so identifiers like bucket, region, access key
+        // id, account SID never appear wiped. Secret fields stay blank and show
+        // an "unchanged" placeholder — leaving them blank keeps the saved value.
         const initial: Record<string, string> = {};
         for (const f of meta.fields) {
-          if (f.kind === 'config' && cfg[f.key] != null) {
-            initial[f.key] = String(cfg[f.key]);
-          } else if (f.default != null && initial[f.key] == null) {
-            initial[f.key] = f.default;
+          if (!f.secret) {
+            const v = cfg[f.key] ?? creds[f.key];
+            if (v != null && v !== '') {
+              initial[f.key] = String(v);
+              continue;
+            }
           }
+          if (f.default != null) initial[f.key] = f.default;
         }
         setForm(initial);
       } catch {

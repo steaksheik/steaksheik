@@ -101,7 +101,7 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     description: 'Send delivery and order status text messages via Twilio.',
     docsUrl: 'https://console.twilio.com',
     fields: [
-      { key: 'accountSid', label: 'Account SID', kind: 'credential', required: true, placeholder: 'AC...' },
+      { key: 'accountSid', label: 'Account SID', kind: 'config', required: true, placeholder: 'AC...' },
       { key: 'authToken', label: 'Auth Token', kind: 'credential', secret: true, required: true },
       { key: 'fromNumber', label: 'From Number', kind: 'config', placeholder: '+441234567890' },
     ],
@@ -114,9 +114,9 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     description: 'Store menu images, brand assets and uploads in an S3 bucket.',
     docsUrl: 'https://console.aws.amazon.com/s3',
     fields: [
-      { key: 'bucketName', label: 'Bucket Name', kind: 'credential', required: true, placeholder: 'my-kitchen-assets' },
-      { key: 'region', label: 'AWS Region', kind: 'credential', required: true, placeholder: 'eu-west-2' },
-      { key: 'accessKeyId', label: 'AWS Access Key ID', kind: 'credential', required: true, placeholder: 'AKIA...' },
+      { key: 'bucketName', label: 'Bucket Name', kind: 'config', required: true, placeholder: 'my-kitchen-assets' },
+      { key: 'region', label: 'AWS Region', kind: 'config', required: true, placeholder: 'eu-west-2' },
+      { key: 'accessKeyId', label: 'AWS Access Key ID', kind: 'config', required: true, placeholder: 'AKIA...' },
       { key: 'secretAccessKey', label: 'AWS Secret Access Key', kind: 'credential', secret: true, required: true },
     ],
   },
@@ -152,7 +152,7 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     description: 'Serve assets globally and invalidate caches via CloudFront.',
     docsUrl: 'https://console.aws.amazon.com/cloudfront',
     fields: [
-      { key: 'distributionId', label: 'Distribution ID', kind: 'credential', required: true, placeholder: 'E1ABCDEF...' },
+      { key: 'distributionId', label: 'Distribution ID', kind: 'config', required: true, placeholder: 'E1ABCDEF...' },
       { key: 'domain', label: 'Distribution Domain', kind: 'config', required: true, placeholder: 'd123.cloudfront.net' },
     ],
   },
@@ -165,7 +165,7 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     docsUrl: 'https://dash.cloudflare.com',
     fields: [
       { key: 'apiToken', label: 'API Token', kind: 'credential', secret: true, required: true },
-      { key: 'zoneId', label: 'Zone ID', kind: 'credential', required: true },
+      { key: 'zoneId', label: 'Zone ID', kind: 'config', required: true },
     ],
   },
   ANALYTICS_GA4: {

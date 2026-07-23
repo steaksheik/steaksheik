@@ -6,9 +6,10 @@ import { requirePermission } from '@/lib/auth/context';
 import { prisma } from '@/lib/db';
 import { Errors } from '@/lib/api/errors';
 import { auditLog } from '@/lib/audit/service';
-import { encryptCredentials, maskCredentials, decryptCredentials } from '@/lib/security/crypto';
+import { encryptCredentials, maskCredentials, decryptCredentials, maskSecret } from '@/lib/security/crypto';
 import { pluginRegistry } from '@/lib/plugins/registry';
 import { PlatformServiceType } from '@/lib/plugins/types';
+import { metaFor } from '@/lib/plugins/service-fields';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +27,25 @@ export const GET = withRoute(async (req, { params }) => {
   const type = typeOf(params);
   const svc = await prisma.platformService.findUnique({ where: { tenantId_serviceType: { tenantId: ctx.tenantId, serviceType: type as never } } });
   if (!svc) return ok({ service: { serviceType: type, configured: false, status: 'UNCONFIGURED', isEnabled: false } });
-  return ok({ service: { ...svc, credentials: maskCredentials((svc.credentials ?? {}) as Record<string, unknown>) } });
+
+  // Return non-secret credential values in plaintext so the admin form can
+  // pre-fill them (bucket, region, access key id, account SID, zone id…). Only
+  // fields explicitly flagged `secret` are masked. Identifiers stored on older
+  // records inside encrypted credentials are surfaced here too, so switching a
+  // field to `config` never appears to "wipe" a previously saved value.
+  const meta = metaFor(type);
+  const secretKeys = new Set((meta?.fields ?? []).filter((f) => f.secret).map((f) => f.key));
+  const decrypted = decryptCredentials((svc.credentials ?? {}) as Record<string, unknown>);
+  const safeCreds: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(decrypted)) {
+    safeCreds[k] = secretKeys.has(k) ? maskSecret(typeof v === 'string' ? v : String(v)) : v;
+  }
+  // Non-secret credential values also merged into config for form pre-fill.
+  const config = { ...(svc.config as Record<string, unknown>) };
+  for (const [k, v] of Object.entries(safeCreds)) {
+    if (!secretKeys.has(k) && config[k] == null) config[k] = v;
+  }
+  return ok({ service: { ...svc, credentials: safeCreds, config } });
 });
 
 const putSchema = z.object({
