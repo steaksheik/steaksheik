@@ -5,6 +5,8 @@ import {
   ConnectionTestResult,
   HealthCheckResult,
 } from '@/lib/plugins/types';
+import { logger } from '@/lib/logger';
+import { extractAwsError, awsTestMessage, verboseServiceErrors } from '@/lib/plugins/adapters/_http';
 
 /**
  * Resolve S3 settings from adapter config/credentials first, then env vars.
@@ -150,7 +152,23 @@ export class S3StorageAdapter extends BaseAdapter implements IStorageAdapter {
         message: `Connected to bucket "${s.bucketName}" in ${s.region}. Upload permission verified.`,
       };
     } catch (err) {
-      return { success: false, message: this.describeError(err, s) };
+      const info = extractAwsError(err);
+      // Always log the full, original AWS SDK error server-side.
+      logger.error('S3 connection test failed', {
+        bucket: s.bucketName,
+        region: s.region,
+        awsErrorName: info.name,
+        awsErrorMessage: info.message,
+        awsErrorCode: info.code,
+        httpStatusCode: info.httpStatusCode,
+        requestId: info.requestId,
+        extendedRequestId: info.extendedRequestId,
+      });
+      return {
+        success: false,
+        message: awsTestMessage(this.describeError(err, s), info),
+        details: verboseServiceErrors() ? (info as unknown as Record<string, unknown>) : undefined,
+      };
     }
   }
 
@@ -176,10 +194,20 @@ export class S3StorageAdapter extends BaseAdapter implements IStorageAdapter {
         checkedAt: new Date().toISOString(),
       };
     } catch (err) {
+      const info = extractAwsError(err);
+      logger.error('S3 health check failed', {
+        bucket: s.bucketName,
+        region: s.region,
+        awsErrorName: info.name,
+        awsErrorMessage: info.message,
+        awsErrorCode: info.code,
+        httpStatusCode: info.httpStatusCode,
+        requestId: info.requestId,
+      });
       return {
         status: 'unhealthy',
         latencyMs: Date.now() - started,
-        message: this.describeError(err, s),
+        message: awsTestMessage(this.describeError(err, s), info),
         checkedAt: new Date().toISOString(),
       };
     }

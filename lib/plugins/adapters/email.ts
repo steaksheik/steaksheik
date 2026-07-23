@@ -8,6 +8,7 @@ import {
   ConnectionTestResult,
 } from '@/lib/plugins/types';
 import { logger } from '@/lib/logger';
+import { extractAwsError, awsTestMessage, verboseServiceErrors } from '@/lib/plugins/adapters/_http';
 import crypto from 'crypto';
 
 // ─────────────────────────────────────────────────────────────
@@ -53,11 +54,55 @@ class SesProvider {
     if (!this.isConfigured(config)) {
       return { success: false, message: 'Amazon SES: access key, secret and region are required' };
     }
-    return {
-      success: true,
-      message: 'Amazon SES: credentials present (validation stub — live check pending real credentials)',
-      details: { region: config.region },
-    };
+    const region = String(config.region);
+    try {
+      // REAL authenticated SES call — GetSendQuota verifies the key, secret and
+      // region without sending anything.
+      const { SESClient, GetSendQuotaCommand } = await import('@aws-sdk/client-ses');
+      const client = new SESClient({
+        region,
+        credentials: {
+          accessKeyId: String(config.accessKeyId),
+          secretAccessKey: String(config.secretAccessKey),
+        },
+      });
+      const quota = await client.send(new GetSendQuotaCommand({}));
+      return {
+        success: true,
+        message: `Amazon SES connected in ${region}. Send quota: ${quota.SentLast24Hours ?? 0}/${quota.Max24HourSend ?? 0} in last 24h.`,
+        details: { region, max24HourSend: quota.Max24HourSend, maxSendRate: quota.MaxSendRate },
+      };
+    } catch (err) {
+      const info = extractAwsError(err);
+      // Always log the full, original AWS SDK error server-side.
+      logger.error('SES connection test failed', {
+        region,
+        awsErrorName: info.name,
+        awsErrorMessage: info.message,
+        awsErrorCode: info.code,
+        httpStatusCode: info.httpStatusCode,
+        requestId: info.requestId,
+      });
+      return {
+        success: false,
+        message: awsTestMessage(this.friendlyError(info, region), info),
+        details: verboseServiceErrors() ? (info as unknown as Record<string, unknown>) : undefined,
+      };
+    }
+  }
+
+  private friendlyError(info: { name?: string; code?: string; httpStatusCode?: number }, region: string): string {
+    const code = info.name || info.code || '';
+    if (code === 'InvalidClientTokenId') return 'The AWS Access Key ID is not valid.';
+    if (code === 'SignatureDoesNotMatch') return 'The AWS Secret Access Key is incorrect.';
+    if (code === 'AccessDenied' || info.httpStatusCode === 403) {
+      return 'Access denied — the access key lacks SES permission (need ses:GetSendQuota / ses:SendEmail).';
+    }
+    if (code === 'UnrecognizedClientException') return 'Credentials not recognised for SES.';
+    if (code === 'UnknownEndpoint' || code === 'NetworkingError') {
+      return `Could not reach SES for region "${region}". Check the region value.`;
+    }
+    return 'Amazon SES connection failed.';
   }
 }
 

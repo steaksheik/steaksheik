@@ -6,7 +6,13 @@ import {
   HealthCheckResult,
 } from '@/lib/plugins/types';
 import { logger } from '@/lib/logger';
-import { fetchWithTimeout, describeNetworkError } from '@/lib/plugins/adapters/_http';
+import {
+  fetchWithTimeout,
+  describeNetworkError,
+  verboseTestMessage,
+  extractError,
+  verboseServiceErrors,
+} from '@/lib/plugins/adapters/_http';
 
 export class CloudFrontCdnAdapter extends BaseAdapter implements ICdnAdapter {
   readonly id = 'cloudfront';
@@ -40,7 +46,19 @@ export class CloudFrontCdnAdapter extends BaseAdapter implements ICdnAdapter {
         message: `Distribution domain "${domain}" is reachable (HTTP ${res.status})${distId ? `, distribution ${distId}` : ''}.`,
       };
     } catch (err) {
-      return { success: false, message: `Could not reach "${domain}": ${describeNetworkError(err)}` };
+      const info = extractError(err);
+      logger.error('CloudFront connection test failed', {
+        domain,
+        distributionId: distId,
+        errorName: info.name,
+        errorMessage: info.message,
+        errorCode: info.code,
+      });
+      return {
+        success: false,
+        message: verboseTestMessage(`Could not reach "${domain}": ${describeNetworkError(err)}`, err),
+        details: verboseServiceErrors() ? (info as unknown as Record<string, unknown>) : undefined,
+      };
     }
   }
 
