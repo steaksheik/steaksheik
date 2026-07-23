@@ -70,6 +70,21 @@ export const PUT = withRoute(async (req, { params }) => {
 
   const mergedCreds = { ...existingCreds, ...(body.credentials ?? {}) };
   const mergedConfig = { ...existingConfig, ...(body.config ?? {}) };
+    // A field's `kind` (credential vs. config) can be reclassified between
+  // releases (e.g. non-secret identifiers moved out of encrypted storage).
+  // Any leftover value for a now-`config` field must be migrated out of the
+  // credentials blob — otherwise the stale, possibly-rotated value keeps
+  // silently overriding the fresh one whenever config+credentials are merged
+  // for adapter use (`{ ...config, ...creds }` always favours credentials).
+  const meta = metaFor(type);
+  for (const f of meta?.fields ?? []) {
+    if (f.kind === 'config' && f.key in mergedCreds) {
+      if (mergedConfig[f.key] == null || mergedConfig[f.key] === '') {
+        mergedConfig[f.key] = mergedCreds[f.key];
+      }
+      delete mergedCreds[f.key];
+    }
+  }
   const encrypted = encryptCredentials(mergedCreds);
 
   const svc = await prisma.platformService.upsert({
