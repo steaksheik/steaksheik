@@ -1,0 +1,1015 @@
+// Dark Kitchen Platform — Prisma Schema (Sprint 2: Platform Foundation)
+// Multi-tenant, event-driven, configuration-first schema.
+
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "../node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// ═══════════════════════════════════════════════
+// CORE PLATFORM
+// ═══════════════════════════════════════════════
+
+model Tenant {
+  id        String       @id @default(uuid())
+  name      String
+  slug      String       @unique
+  status    TenantStatus @default(ACTIVE)
+  plan      String       @default("free")
+  settings  Json         @default("{}")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  createdBy String?
+  updatedBy String?
+
+  domains              TenantDomain[]
+  configurations       Configuration[]
+  users                User[]
+  roles                Role[]
+  brands               Brand[]
+  categories           Category[]
+  products             Product[]
+  featureFlagOverrides FeatureFlagOverride[]
+  auditLogs            AuditLog[]
+  eventOutbox          EventOutbox[]
+  processedEvents      ProcessedEvent[]
+  sessions             Session[]
+  platformServices     PlatformService[]
+  homepageSections     HomepageSection[]
+  navigationItems      NavigationItem[]
+  seoSettings          SeoSettings?
+  contactInfo          ContactInfo?
+  socialLinks          SocialLink[]
+  customers            Customer[]
+  carts                Cart[]
+  orders               Order[]
+  loyaltyAccounts      LoyaltyAccount[]
+
+  @@map("tenants")
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+model TenantDomain {
+  id        String   @id @default(uuid())
+  tenantId  String
+  domain    String   @unique
+  isPrimary Boolean  @default(false)
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([domain])
+  @@map("tenant_domains")
+}
+
+model Configuration {
+  id               String          @id @default(uuid())
+  tenantId         String?
+  module           String
+  key              String
+  value            Json
+  type             ConfigValueType @default(STRING)
+  isPublic         Boolean         @default(false)
+  isSecret         Boolean         @default(false)
+  validationSchema Json?
+  description      String?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  createdBy        String?
+  updatedBy        String?
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, module, key])
+  @@index([tenantId])
+  @@index([module])
+  @@index([tenantId, module])
+  @@map("configurations")
+}
+
+enum ConfigValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+  ENCRYPTED
+  COLOR
+  URL
+  EMAIL
+}
+
+// ═══════════════════════════════════════════════
+// EVENT SYSTEM (Transactional Outbox)
+// ═══════════════════════════════════════════════
+
+model EventOutbox {
+  id            String            @id @default(uuid())
+  tenantId      String
+  type          String
+  aggregateId   String
+  aggregateType String
+  payload       Json
+  metadata      Json
+  status        EventOutboxStatus @default(PENDING)
+  retryCount    Int               @default(0)
+  maxRetries    Int               @default(5)
+  lastError     String?
+  scheduledFor  DateTime?
+  occurredAt    DateTime          @default(now())
+  publishedAt   DateTime?
+  createdAt     DateTime          @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([status, scheduledFor])
+  @@index([type])
+  @@map("event_outbox")
+}
+
+enum EventOutboxStatus {
+  PENDING
+  PUBLISHING
+  PUBLISHED
+  FAILED
+  DEAD_LETTER
+}
+
+model ProcessedEvent {
+  id          String   @id @default(uuid())
+  tenantId    String
+  eventId     String
+  handlerName String
+  processedAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, handlerName])
+  @@index([tenantId])
+  @@index([eventId])
+  @@map("processed_events")
+}
+
+// ═══════════════════════════════════════════════
+// IDENTITY & ACCESS
+// ═══════════════════════════════════════════════
+
+model User {
+  id            String     @id @default(uuid())
+  tenantId      String
+  email         String
+  passwordHash  String
+  firstName     String
+  lastName      String
+  avatarUrl     String?
+  status        UserStatus @default(ACTIVE)
+  emailVerified Boolean    @default(false)
+  lastLoginAt   DateTime?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  createdBy     String?
+  updatedBy     String?
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles UserRole[]
+  sessions  Session[]
+  auditLogs AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  tenantId    String?
+  name        String
+  displayName String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant          Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  rolePermissions RolePermission[]
+  userRoles       UserRole[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  resource    String
+  action      String
+  description String?
+  createdAt   DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String   @id @default(uuid())
+  roleId       String
+  permissionId String
+  createdAt    DateTime @default(now())
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  tenantId     String
+  userId       String
+  token        String   @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  lastActiveAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([token])
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  before     Json?
+  after      Json?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User?  @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([tenantId, action])
+  @@index([tenantId, resource])
+  @@index([tenantId, userId])
+  @@index([tenantId, createdAt])
+  @@map("audit_logs")
+}
+
+// ═══════════════════════════════════════════════
+// FEATURE FLAGS
+// ═══════════════════════════════════════════════
+
+model FeatureFlag {
+  id           String          @id @default(uuid())
+  key          String          @unique
+  name         String
+  description  String?
+  module       String
+  type         FeatureFlagType @default(BOOLEAN)
+  defaultValue Json
+  isActive     Boolean         @default(true)
+  version      Int             @default(1)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  overrides FeatureFlagOverride[]
+
+  @@index([module])
+  @@map("feature_flags")
+}
+
+enum FeatureFlagType {
+  BOOLEAN
+  PERCENTAGE
+  VARIANT
+}
+
+model FeatureFlagOverride {
+  id        String   @id @default(uuid())
+  tenantId  String
+  flagId    String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  flag   FeatureFlag @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, flagId])
+  @@index([tenantId])
+  @@map("feature_flag_overrides")
+}
+
+// ═══════════════════════════════════════════════
+// PLATFORM SERVICES (Credential Vault)
+// ═══════════════════════════════════════════════
+
+model PlatformService {
+  id               String              @id @default(uuid())
+  tenantId         String
+  serviceType      PlatformServiceType
+  adapterType      String
+  displayName      String
+  credentials      Json
+  config           Json                @default("{}")
+  isEnabled        Boolean             @default(false)
+  status           ServiceStatus       @default(UNCONFIGURED)
+  lastHealthCheck  DateTime?
+  lastHealthStatus Json?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, serviceType])
+  @@index([tenantId])
+  @@map("platform_services")
+}
+
+enum PlatformServiceType {
+  EMAIL
+  SMS
+  STORAGE
+  CDN
+  PAYMENT
+  MAPS
+  ANALYTICS_GA4
+  ANALYTICS_GTM
+  ANALYTICS_PH
+  DNS_CDN
+  ERROR_TRACKING
+  UPTIME
+}
+
+enum ServiceStatus {
+  UNCONFIGURED
+  CONFIGURED
+  CONNECTED
+  DEGRADED
+  DISCONNECTED
+  ERROR
+}
+
+// ═══════════════════════════════════════════════
+// BRANDING
+// ═══════════════════════════════════════════════
+
+model Brand {
+  id          String   @id @default(uuid())
+  tenantId    String   @unique
+  name        String
+  tagline     String?
+  description String?
+  logoUrl     String?
+  faviconUrl  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assets BrandAsset[]
+  theme  ThemeConfig?
+
+  @@index([tenantId])
+  @@map("brands")
+}
+
+model BrandAsset {
+  id        String         @id @default(uuid())
+  brandId   String
+  type      BrandAssetType
+  url       String
+  altText   String?
+  width     Int?
+  height    Int?
+  fileSize  Int?
+  mimeType  String?
+  sortOrder Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@index([brandId])
+  @@index([brandId, type])
+  @@map("brand_assets")
+}
+
+enum BrandAssetType {
+  LOGO
+  FAVICON
+  HERO_IMAGE
+  BANNER
+  GALLERY
+  OG_IMAGE
+  BACKGROUND
+  ICON
+}
+
+model ThemeConfig {
+  id              String   @id @default(uuid())
+  brandId         String   @unique
+  primaryColor    String   @default("#000000")
+  secondaryColor  String   @default("#ffffff")
+  accentColor     String   @default("#ff6600")
+  backgroundColor String   @default("#ffffff")
+  textColor       String   @default("#1a1a1a")
+  fontPrimary     String   @default("Inter")
+  fontSecondary   String?
+  fontHeading     String?
+  borderRadius    String   @default("0.5rem")
+  customCss       String?
+  darkMode        Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  brand Brand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@map("theme_configs")
+}
+
+// ═══════════════════════════════════════════════
+// THEME & CONTENT CONFIGURATION
+// ═══════════════════════════════════════════════
+
+model HomepageSection {
+  id        String              @id @default(uuid())
+  tenantId  String
+  type      HomepageSectionType
+  title     String?
+  subtitle  String?
+  content   Json
+  isVisible Boolean             @default(true)
+  sortOrder Int                 @default(0)
+  settings  Json                @default("{}")
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, type])
+  @@index([tenantId])
+  @@index([tenantId, isVisible, sortOrder])
+  @@map("homepage_sections")
+}
+
+enum HomepageSectionType {
+  HERO
+  FEATURED_CATEGORIES
+  FEATURED_PRODUCTS
+  PROMOTIONAL_BANNER
+  ABOUT
+  TESTIMONIALS
+  GALLERY
+  CTA
+  CUSTOM
+}
+
+model NavigationItem {
+  id        String      @id @default(uuid())
+  tenantId  String
+  label     String
+  url       String
+  target    String      @default("_self")
+  parentId  String?
+  sortOrder Int         @default(0)
+  isVisible Boolean     @default(true)
+  location  NavLocation @default(HEADER)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   NavigationItem?  @relation("NavChildren", fields: [parentId], references: [id])
+  children NavigationItem[] @relation("NavChildren")
+
+  @@index([tenantId])
+  @@index([tenantId, location, isVisible, sortOrder])
+  @@map("navigation_items")
+}
+
+enum NavLocation {
+  HEADER
+  FOOTER
+  MOBILE
+}
+
+model SeoSettings {
+  id              String   @id @default(uuid())
+  tenantId        String   @unique
+  siteTitle       String?
+  siteDescription String?
+  ogImage         String?
+  twitterHandle   String?
+  canonicalUrl    String?
+  robotsTxt       String?
+  customHeadTags  Json?
+  structuredData  Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("seo_settings")
+}
+
+model ContactInfo {
+  id            String   @id @default(uuid())
+  tenantId      String   @unique
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  postcode      String?
+  country       String   @default("GB")
+  latitude      Float?
+  longitude     Float?
+  businessHours Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("contact_info")
+}
+
+model SocialLink {
+  id        String         @id @default(uuid())
+  tenantId  String
+  platform  SocialPlatform
+  url       String
+  sortOrder Int            @default(0)
+  isVisible Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, platform])
+  @@index([tenantId])
+  @@map("social_links")
+}
+
+enum SocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+  TWITTER
+  TIKTOK
+  YOUTUBE
+  LINKEDIN
+  WHATSAPP
+  TELEGRAM
+  SNAPCHAT
+  PINTEREST
+}
+
+// ═══════════════════════════════════════════════
+// CATALOGUE
+// ═══════════════════════════════════════════════
+
+model Category {
+  id          String         @id @default(uuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  imageUrl    String?
+  parentId    String?
+  sortOrder   Int            @default(0)
+  status      CategoryStatus @default(ACTIVE)
+  metadata    Json?
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryChildren")
+  products Product[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, parentId])
+  @@index([tenantId, status, sortOrder])
+  @@map("categories")
+}
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+model Product {
+  id               String        @id @default(uuid())
+  tenantId         String
+  categoryId       String
+  name             String
+  slug             String
+  description      String?
+  shortDescription String?
+  basePrice        Decimal       @db.Decimal(10, 2)
+  compareAtPrice   Decimal?      @db.Decimal(10, 2)
+  currency         String        @default("GBP")
+  sku              String?
+  status           ProductStatus @default(DRAFT)
+  isFeatured       Boolean       @default(false)
+  isAvailable      Boolean       @default(true)
+  sortOrder        Int           @default(0)
+  nutritionalInfo  Json?
+  metadata         Json?
+  publishedAt      DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category       Category         @relation(fields: [categoryId], references: [id])
+  variants       ProductVariant[]
+  modifierGroups ModifierGroup[]
+  images         ProductImage[]
+  orderItems     OrderItem[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@index([tenantId, categoryId])
+  @@index([tenantId, status])
+  @@index([tenantId, isFeatured])
+  @@index([tenantId, status, sortOrder])
+  @@map("products")
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+  OUT_OF_STOCK
+}
+
+model ProductVariant {
+  id          String   @id @default(uuid())
+  productId   String
+  name        String
+  sku         String?
+  price       Decimal  @db.Decimal(10, 2)
+  sortOrder   Int      @default(0)
+  isDefault   Boolean  @default(false)
+  isAvailable Boolean  @default(true)
+  attributes  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_variants")
+}
+
+model ModifierGroup {
+  id          String   @id @default(uuid())
+  productId   String
+  name        String
+  description String?
+  isRequired  Boolean  @default(false)
+  minSelect   Int      @default(0)
+  maxSelect   Int      @default(1)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  product   Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  modifiers Modifier[]
+
+  @@index([productId])
+  @@map("modifier_groups")
+}
+
+model Modifier {
+  id              String   @id @default(uuid())
+  groupId         String
+  name            String
+  priceAdjustment Decimal  @default(0) @db.Decimal(10, 2)
+  sortOrder       Int      @default(0)
+  isDefault       Boolean  @default(false)
+  isAvailable     Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  group ModifierGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
+  @@map("modifiers")
+}
+
+model ProductImage {
+  id        String   @id @default(uuid())
+  productId String
+  url       String
+  altText   String?
+  width     Int?
+  height    Int?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+// ═══════════════════════════════════════════════
+// COMMERCE — Ordering, Payments, Customers
+// ═══════════════════════════════════════════════
+
+model Customer {
+  id            String         @id @default(uuid())
+  tenantId      String
+  email         String
+  passwordHash  String?
+  firstName     String?
+  lastName      String?
+  phone         String?
+  status        CustomerStatus @default(ACTIVE)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  addresses      CustomerAddress[]
+  carts          Cart[]
+  orders         Order[]
+  loyaltyAccount LoyaltyAccount?
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@map("customers")
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  BANNED
+}
+
+model CustomerAddress {
+  id         String  @id @default(uuid())
+  customerId String
+  label      String  @default("Home")
+  firstName  String
+  lastName   String
+  line1      String
+  line2      String?
+  city       String
+  county     String?
+  postcode   String
+  country    String  @default("GB")
+  phone      String?
+  isDefault  Boolean @default(false)
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("customer_addresses")
+}
+
+model Cart {
+  id         String   @id @default(uuid())
+  tenantId   String
+  customerId String?
+  token      String   @unique @default(uuid())
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    CartItem[]
+
+  @@index([tenantId])
+  @@index([token])
+  @@index([customerId])
+  @@map("carts")
+}
+
+model CartItem {
+  id        String  @id @default(uuid())
+  cartId    String
+  productId String
+  variantId String?
+  quantity  Int     @default(1)
+  unitPrice Decimal @db.Decimal(10, 2)
+  modifiers Json?
+  notes     String?
+
+  cart Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@index([cartId])
+  @@map("cart_items")
+}
+
+model Order {
+  id              String        @id @default(uuid())
+  tenantId        String
+  customerId      String?
+  orderNumber     String
+  status          OrderStatus   @default(PENDING)
+  type            OrderType     @default(DELIVERY)
+  subtotal        Decimal       @db.Decimal(10, 2)
+  deliveryFee     Decimal       @default(0) @db.Decimal(10, 2)
+  discount        Decimal       @default(0) @db.Decimal(10, 2)
+  total           Decimal       @db.Decimal(10, 2)
+  currency        String        @default("GBP")
+  // Delivery info
+  deliveryFirstName String?
+  deliveryLastName  String?
+  deliveryLine1     String?
+  deliveryLine2     String?
+  deliveryCity      String?
+  deliveryPostcode  String?
+  deliveryPhone     String?
+  deliveryNotes     String?
+  // Guest info (when no customer account)
+  guestEmail      String?
+  guestName       String?
+  guestPhone      String?
+  // Timestamps
+  estimatedReadyAt  DateTime?
+  confirmedAt       DateTime?
+  preparingAt       DateTime?
+  readyAt           DateTime?
+  dispatchedAt      DateTime?
+  deliveredAt       DateTime?
+  cancelledAt       DateTime?
+  cancellationReason String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  tenant   Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items    OrderItem[]
+  payments Payment[]
+
+  @@unique([tenantId, orderNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@index([customerId])
+  @@index([guestEmail])
+  @@map("orders")
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderType {
+  DELIVERY
+  COLLECTION
+}
+
+model OrderItem {
+  id          String  @id @default(uuid())
+  orderId     String
+  productId   String
+  productName String
+  variantName String?
+  quantity    Int     @default(1)
+  unitPrice   Decimal @db.Decimal(10, 2)
+  totalPrice  Decimal @db.Decimal(10, 2)
+  modifiers   Json?
+  notes       String?
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@map("order_items")
+}
+
+model Payment {
+  id                String        @id @default(uuid())
+  orderId           String
+  stripeSessionId   String?       @unique
+  stripePaymentIntent String?     @unique
+  amount            Decimal       @db.Decimal(10, 2)
+  currency          String        @default("GBP")
+  status            PaymentStatus @default(PENDING)
+  method            String?
+  failureReason     String?
+  metadata          Json?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([stripeSessionId])
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+// ─── Loyalty ──────────────────────────────────────────────────────────
+enum LoyaltyTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+model LoyaltyAccount {
+  id             String       @id @default(uuid())
+  customerId     String       @unique
+  tenantId       String
+  pointsBalance  Int          @default(0)
+  lifetimePoints Int          @default(0)
+  tier           LoyaltyTier  @default(BRONZE)
+  tierUpdatedAt  DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  customer     Customer             @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions LoyaltyTransaction[]
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@map("loyalty_accounts")
+}
+
+model LoyaltyTransaction {
+  id               String   @id @default(uuid())
+  loyaltyAccountId String
+  points           Int
+  type             String   // EARN, REDEEM, BONUS, ADJUSTMENT, EXPIRED
+  description      String
+  orderId          String?
+  createdAt        DateTime @default(now())
+
+  account LoyaltyAccount @relation(fields: [loyaltyAccountId], references: [id], onDelete: Cascade)
+
+  @@index([loyaltyAccountId])
+  @@index([orderId])
+  @@map("loyalty_transactions")
+}

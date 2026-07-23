@@ -1,0 +1,368 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import { toast } from 'sonner';
+import {
+  Flame,
+  Truck,
+  Clock,
+  ChevronRight,
+  Star,
+  ShieldCheck,
+  ChefHat,
+  Leaf,
+  CheckCircle2,
+  Play,
+  Handshake,
+  Users,
+  ShoppingBag,
+  Bike,
+  UtensilsCrossed,
+  Soup,
+} from 'lucide-react';
+
+export interface StoreProduct {
+  id: string;
+  name: string;
+  slug: string;
+  price: string;
+  imageUrl: string | null;
+}
+
+// Design photography (marketing assets)
+const IMG = {
+  hero: 'https://cdn.abacus.ai/images/95644641-25bb-4a41-958a-17df20210e06.png',
+  steakFries: 'https://cdn.abacus.ai/images/fd3807f8-af76-4c64-b50e-b11491e32a3f.png',
+  chef: 'https://cdn.abacus.ai/images/5faadfea-ed73-4268-95eb-e301eafe8ba1.png',
+  testimonial: 'https://cdn.abacus.ai/images/b747370e-f5f0-43e5-a8fa-e2cc895c8431.png',
+  tbone: 'https://cdn.abacus.ai/images/d4d72b03-c191-4106-9b31-537de160a3bb.png',
+  weekendPlate: 'https://cdn.abacus.ai/images/68cf5371-7416-4b2e-aa01-302b3bd01831.png',
+  rChips: 'https://cdn.abacus.ai/images/02be2590-a26c-4332-b414-bc2f8d1461ab.png',
+  rDessert: 'https://cdn.abacus.ai/images/a620b265-0bf5-4088-82a9-f1bf0156c6d6.png',
+  rMedallions: 'https://cdn.abacus.ai/images/cd278181-c76f-4947-b406-9c488eefae45.png',
+  rPlated: 'https://cdn.abacus.ai/images/34161c54-4f57-4065-809c-42316f8df04d.png',
+};
+
+const ACCENT = '#c9a96e';
+
+export function HomeClient({
+  brandName,
+  steaks,
+}: {
+  brandName: string;
+  steaks: StoreProduct[];
+}) {
+  const soon = (label: string) => toast.info(`${label} — coming soon`);
+  const [nlName, setNlName] = useState('');
+  const [nlEmail, setNlEmail] = useState('');
+
+  const submitNewsletter = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nlEmail.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+    toast.success('Thanks for joining the family! We\u2019ll be in touch.');
+    setNlName('');
+    setNlEmail('');
+  };
+
+  return (
+    <div className="bg-white text-[#0a0a0a]">
+      {/* ══ HERO ══ */}
+      <section className="relative bg-[#0a0a0a] text-white overflow-hidden">
+        <div className="absolute inset-0">
+          <img src={IMG.hero} alt="Premium grilled steak" className="h-full w-full object-cover object-right opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/85 to-transparent" />
+        </div>
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 sm:py-28 lg:py-32">
+          <div className="max-w-xl">
+            <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight">
+              PREMIUM STEAK.<br />
+              <span style={{ color: ACCENT }}>PERFECTLY DELIVERED.</span>
+            </h1>
+            <p className="mt-5 text-base sm:text-lg text-white/70 max-w-md">
+              Restaurant quality steaks, sides and sauces delivered hot to your door.
+            </p>
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Link
+                href="/menu"
+                className="inline-flex items-center gap-2 rounded-md px-7 py-3.5 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.03]"
+                style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
+              >
+                Order Now
+              </Link>
+              <Link
+                href="/menu"
+                className="inline-flex items-center gap-2 rounded-md border border-white/30 px-7 py-3.5 text-sm font-bold uppercase tracking-wide text-white hover:bg-white/10 transition-colors"
+              >
+                View Menu
+              </Link>
+            </div>
+            <div className="mt-10 flex flex-wrap gap-x-8 gap-y-4">
+              {[
+                { icon: ShieldCheck, t: 'Premium Quality', s: '100% Grass-Fed' },
+                { icon: Flame, t: 'Hot & Fresh', s: 'Every Time' },
+                { icon: Truck, t: 'Fast Delivery', s: 'To Your Door' },
+              ].map(({ icon: Icon, t, s }) => (
+                <div key={t} className="flex items-center gap-2.5">
+                  <Icon className="h-6 w-6 shrink-0" style={{ color: ACCENT }} />
+                  <div className="leading-tight">
+                    <div className="text-xs font-bold uppercase tracking-wide">{t}</div>
+                    <div className="text-[11px] text-white/50">{s}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ PROMO CARDS ══ */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+        <div className="grid gap-5 md:grid-cols-3">
+          {/* Meal deals */}
+          <div className="relative overflow-hidden rounded-xl bg-[#161311] text-white min-h-[180px] flex">
+            <div className="relative z-10 p-6 flex flex-col justify-center">
+              <h3 className="font-heading text-2xl font-extrabold leading-tight">STEAK<br />MEAL DEALS</h3>
+              <p className="mt-1 text-sm font-bold" style={{ color: ACCENT }}>SAVE UP TO 20%</p>
+              <button onClick={() => soon('Meal deals')} className="mt-4 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">Order Now</button>
+            </div>
+            <img src={IMG.steakFries} alt="Steak meal deal" className="absolute right-0 top-0 h-full w-1/2 object-cover" />
+            <div className="absolute right-0 top-0 h-full w-3/5 bg-gradient-to-l from-transparent to-[#161311]" />
+          </div>
+          {/* Weekend special */}
+          <div className="relative overflow-hidden rounded-xl bg-[#161311] text-white min-h-[180px] flex">
+            <div className="relative z-10 p-6 flex flex-col justify-center">
+              <h3 className="font-heading text-2xl font-extrabold leading-tight">WEEKEND<br />SPECIAL</h3>
+              <p className="mt-1 text-xs font-semibold text-white/70">RIBEYE + 2 SIDES</p>
+              <p className="text-lg font-extrabold" style={{ color: ACCENT }}>£24.99</p>
+              <button onClick={() => soon('Weekend special')} className="mt-3 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">Order Now</button>
+            </div>
+            <img src={IMG.weekendPlate} alt="Weekend special ribeye and sides" className="absolute right-0 top-0 h-full w-1/2 object-cover" />
+            <div className="absolute right-0 top-0 h-full w-3/5 bg-gradient-to-l from-transparent to-[#161311]" />
+          </div>
+          {/* Free delivery */}
+          <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white min-h-[180px] p-6 flex flex-col justify-center">
+            <h3 className="font-heading text-2xl font-extrabold" style={{ color: ACCENT }}>FREE DELIVERY</h3>
+            <p className="mt-1 text-sm text-white/70">ON ORDERS OVER £25</p>
+            <button onClick={() => soon('Delivery')} className="mt-4 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">Order Now</button>
+            <Bike className="absolute right-5 bottom-4 h-20 w-20 opacity-90" style={{ color: ACCENT }} strokeWidth={1.2} />
+          </div>
+        </div>
+      </section>
+
+      {/* ══ REWARDS ══ */}
+      <section id="rewards" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 scroll-mt-20">
+        <h2 className="font-heading text-2xl font-extrabold">EARN POINTS. GET REWARDED.</h2>
+        <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
+          <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { pts: '1000', reward: 'Free Side', img: IMG.rChips, pct: 40 },
+              { pts: '2500', reward: 'Free Dessert', img: IMG.rDessert, pct: 60 },
+              { pts: '5000', reward: '£10 Off', img: IMG.rMedallions, pct: 75 },
+              { pts: '7500', reward: 'Free Steak', img: IMG.rPlated, pct: 90 },
+            ].map((tier) => (
+              <div key={tier.pts}>
+                <div className="flex items-center gap-3">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-neutral-100">
+                    <img src={tier.img} alt={tier.reward} className="h-full w-full object-cover" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-extrabold leading-none">{tier.pts}<span className="ml-1 text-[10px] font-semibold text-neutral-500">POINTS</span></div>
+                    <div className="mt-1 text-xs text-neutral-500">{tier.reward}</div>
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 w-full rounded-full bg-neutral-200">
+                  <div className="h-full rounded-full" style={{ width: `${tier.pct}%`, backgroundColor: ACCENT }} />
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl bg-[#0a0a0a] p-6 text-white flex flex-col justify-center">
+            <h3 className="font-heading text-xl font-extrabold">STEAK REWARDS</h3>
+            <p className="mt-2 text-sm text-white/60">Join our loyalty programme and unlock exclusive rewards and offers.</p>
+            <button onClick={() => soon('Steak Rewards')} className="mt-4 w-fit rounded-md px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide" style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}>Join Now</button>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ MOST LOVED STEAKS ══ */}
+      {steaks.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+          <h2 className="font-heading text-2xl font-extrabold">OUR MOST LOVED STEAKS</h2>
+          <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            {steaks.slice(0, 5).map((p) => (
+              <div key={p.id} className="group overflow-hidden rounded-xl bg-[#0a0a0a] text-white">
+                <Link href={`/product/${p.slug}`} className="block relative aspect-square overflow-hidden bg-neutral-900">
+                  {p.imageUrl ? (
+                    <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center"><Flame className="h-10 w-10 text-white/10" /></div>
+                  )}
+                </Link>
+                <div className="p-4">
+                  <h3 className="text-sm font-bold uppercase tracking-wide">{p.name}</h3>
+                  <p className="mt-0.5 text-sm" style={{ color: ACCENT }}>{p.price}</p>
+                  <Link href={`/product/${p.slug}`} className="mt-3 block rounded-md border border-white/20 py-2 text-center text-[11px] font-bold uppercase tracking-wide text-white hover:bg-white/10 transition-colors">Order Now</Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ══ FEATURE CARDS ══ */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid gap-5 md:grid-cols-3">
+          {[
+            { title: 'PERFECTLY COOKED', sub: 'Just the way you like it', cta: 'Learn More', href: '/#why', icon: Flame },
+            { title: 'PREMIUM SIDES', sub: 'The perfect pairings', cta: 'View Sides', href: '/menu?category=sides', icon: UtensilsCrossed },
+            { title: 'SIGNATURE SAUCES', sub: 'Made in-house', cta: 'View Sauces', href: '/menu', icon: Soup },
+          ].map((f) => {
+            const Icon = f.icon;
+            return (
+              <Link key={f.title} href={f.href} className="group relative overflow-hidden rounded-xl min-h-[140px] flex items-center bg-[#0a0a0a] p-6 border border-white/5 hover:border-white/15 transition-colors">
+                <Icon className="absolute -right-3 -bottom-3 h-28 w-28 opacity-[0.08] text-white" strokeWidth={1} />
+                <div className="relative z-10 text-white">
+                  <Icon className="h-7 w-7" style={{ color: ACCENT }} strokeWidth={1.4} />
+                  <h3 className="mt-3 font-heading text-lg font-extrabold">{f.title}</h3>
+                  <p className="mt-1 text-xs text-white/60">{f.sub}</p>
+                  <span className="mt-3 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wide" style={{ color: ACCENT }}>
+                    {f.cta} <ChevronRight className="h-3.5 w-3.5" />
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* ══ WHY CHOOSE ══ */}
+      <section id="why" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 scroll-mt-20">
+        <h2 className="font-heading text-2xl font-extrabold">WHY CHOOSE {brandName.toUpperCase()}?</h2>
+        <div className="mt-8 grid gap-8 sm:grid-cols-3 lg:grid-cols-5">
+          {[
+            { icon: ShieldCheck, t: 'Premium Quality', s: '100% grass-fed, hand selected cuts' },
+            { icon: ChefHat, t: 'Expertly Cooked', s: 'Perfectly seasoned & cooked to perfection' },
+            { icon: Leaf, t: 'Fresh Ingredients', s: 'Locally sourced whenever possible' },
+            { icon: Truck, t: 'Fast Delivery', s: 'Delivered hot & fresh to your door' },
+            { icon: CheckCircle2, t: 'Satisfaction', s: 'Not happy? We\u2019ll make it right' },
+          ].map(({ icon: Icon, t, s }) => (
+            <div key={t} className="flex flex-col">
+              <Icon className="h-8 w-8" style={{ color: ACCENT }} strokeWidth={1.4} />
+              <h3 className="mt-3 text-xs font-bold uppercase tracking-wide">{t}</h3>
+              <p className="mt-1 text-xs text-neutral-500">{s}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══ DELIVERY / COLLECT ══ */}
+      <section id="delivery" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 scroll-mt-20">
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="relative overflow-hidden rounded-xl bg-[#b31217] text-white min-h-[150px] p-6 flex flex-col justify-center">
+            <div className="flex items-center gap-2"><Truck className="h-5 w-5" /><h3 className="font-heading text-xl font-extrabold">DELIVERY</h3></div>
+            <p className="mt-1 text-sm text-white/80">Delivered hot to you</p>
+            <button onClick={() => soon('Delivery ordering')} className="mt-4 w-fit rounded-md bg-white px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-[#b31217] hover:bg-white/90 transition-colors">Order Delivery</button>
+            <ShoppingBag className="absolute right-6 bottom-4 h-16 w-16 opacity-20" />
+          </div>
+          <div className="relative overflow-hidden rounded-xl text-[#0a0a0a] min-h-[150px] p-6 flex flex-col justify-center" style={{ backgroundColor: ACCENT }}>
+            <div className="flex items-center gap-2"><ShoppingBag className="h-5 w-5" /><h3 className="font-heading text-xl font-extrabold">COLLECT IN STORE</h3></div>
+            <p className="mt-1 text-sm text-black/70">Skip the queue</p>
+            <button onClick={() => soon('Collection ordering')} className="mt-4 w-fit rounded-md bg-[#0a0a0a] px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-white hover:bg-black/90 transition-colors">Order Collection</button>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ TESTIMONIAL + STORY ══ */}
+      <section id="story" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 scroll-mt-20">
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white flex">
+            <img src={IMG.testimonial} alt="Customer favourite steak" className="h-auto w-2/5 object-cover" />
+            <div className="p-6 flex flex-col justify-center">
+              <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: ACCENT }}>What Our Customers Say</h3>
+              <div className="mt-2 flex gap-0.5">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <Star key={i} className="h-4 w-4" style={{ color: ACCENT, fill: ACCENT }} />
+                ))}
+              </div>
+              <p className="mt-3 font-accent text-xl text-white/85 italic leading-snug">&ldquo;The best steak I&rsquo;ve had outside of a steakhouse. Always cooked perfectly and delivered hot!&rdquo;</p>
+              <p className="mt-2 text-xs text-white/50">&ndash; James R.</p>
+            </div>
+          </div>
+          <div className="relative overflow-hidden rounded-xl text-white min-h-[180px] flex items-center">
+            <img src={IMG.tbone} alt="Our story" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#0a0a0a]/70 to-[#0a0a0a]" />
+            <div className="relative z-10 ml-auto p-6 text-right">
+              <button onClick={() => soon('Our story video')} className="ml-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/70 hover:bg-white/10 transition-colors">
+                <Play className="h-5 w-5 fill-white" />
+              </button>
+              <h3 className="font-heading text-xl font-extrabold">OUR STORY</h3>
+              <p className="mt-1 text-sm text-white/70">Passion for steak, perfected.</p>
+              <button onClick={() => soon('Our story video')} className="mt-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: ACCENT }}>Watch Video</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ VALUES ══ */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+        <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white">
+          <div className="grid lg:grid-cols-[1fr_300px]">
+            <div className="p-8">
+              <h2 className="font-heading text-xl font-extrabold" style={{ color: ACCENT }}>WE CARE ABOUT MORE THAN JUST STEAK</h2>
+              <div className="mt-6 grid gap-6 sm:grid-cols-3">
+                {[
+                  { icon: Leaf, t: 'Sustainable Sourcing', s: 'We work with farms that prioritise animal welfare and the environment.' },
+                  { icon: Handshake, t: 'Local Partners', s: 'Supporting local farmers and suppliers in our community.' },
+                  { icon: Users, t: 'Community Focus', s: 'We give back to the community through local initiatives.' },
+                ].map(({ icon: Icon, t, s }) => (
+                  <div key={t}>
+                    <Icon className="h-7 w-7" style={{ color: ACCENT }} strokeWidth={1.4} />
+                    <h3 className="mt-3 text-xs font-bold uppercase tracking-wide" style={{ color: ACCENT }}>{t}</h3>
+                    <p className="mt-1 text-xs text-white/60">{s}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative min-h-[200px]">
+              <img src={IMG.chef} alt="Our head chef" className="absolute inset-0 h-full w-full object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] to-transparent" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══ NEWSLETTER ══ */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
+          <div>
+            <h2 className="font-heading text-2xl font-extrabold">JOIN THE {brandName.toUpperCase()} FAMILY</h2>
+            <p className="mt-2 text-sm text-neutral-500 max-w-md">Be the first to know about new menu items, special offers and exclusive rewards.</p>
+          </div>
+          <form onSubmit={submitNewsletter} className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              value={nlName}
+              onChange={(e) => setNlName(e.target.value)}
+              placeholder="Your name"
+              className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
+            />
+            <input
+              type="email"
+              value={nlEmail}
+              onChange={(e) => setNlEmail(e.target.value)}
+              placeholder="Your email"
+              className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
+            />
+            <button type="submit" className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02]" style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}>
+              Join Now
+            </button>
+          </form>
+        </div>
+      </section>
+    </div>
+  );
+}

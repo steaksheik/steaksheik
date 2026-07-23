@@ -1,0 +1,161 @@
+import { prisma } from '@/lib/db';
+import { Decimal } from '@prisma/client/runtime/library';
+
+const CART_TTL_HOURS = 72;
+
+function expiresAt() {
+  return new Date(Date.now() + CART_TTL_HOURS * 60 * 60 * 1000);
+}
+
+export async function getOrCreateCart(tenantId: string, token?: string, customerId?: string) {
+  if (token) {
+    const existing = await prisma.cart.findUnique({
+      where: { token },
+      include: { items: true },
+    });
+    if (existing && existing.tenantId === tenantId) {
+      // refresh expiry
+      await prisma.cart.update({ where: { id: existing.id }, data: { expiresAt: expiresAt() } });
+      return existing;
+    }
+  }
+  // create new cart
+  return prisma.cart.create({
+    data: {
+      tenantId,
+      customerId: customerId || null,
+      expiresAt: expiresAt(),
+    },
+    include: { items: true },
+  });
+}
+
+export async function addItem(
+  cartId: string,
+  productId: string,
+  variantId: string | null,
+  unitPrice: number,
+  quantity: number,
+  modifiers?: unknown,
+  notes?: string
+) {
+  // check if same product+variant already in cart
+  const existing = await prisma.cartItem.findFirst({
+    where: {
+      cartId,
+      productId,
+      variantId: variantId || null,
+    },
+  });
+  if (existing) {
+    return prisma.cartItem.update({
+      where: { id: existing.id },
+      data: { quantity: existing.quantity + quantity },
+    });
+  }
+  return prisma.cartItem.create({
+    data: {
+      cartId,
+      productId,
+      variantId,
+      unitPrice: new Decimal(unitPrice),
+      quantity,
+      modifiers: (modifiers ?? null) as never,
+      notes,
+    },
+  });
+}
+
+export async function updateItemQuantity(itemId: string, quantity: number) {
+  if (quantity <= 0) {
+    return prisma.cartItem.delete({ where: { id: itemId } });
+  }
+  return prisma.cartItem.update({ where: { id: itemId }, data: { quantity } });
+}
+
+export async function removeItem(itemId: string) {
+  return prisma.cartItem.delete({ where: { id: itemId } });
+}
+
+export async function clearCart(cartId: string) {
+  return prisma.cartItem.deleteMany({ where: { cartId } });
+}
+
+export interface CartSummary {
+  cartId: string;
+  token: string;
+  items: {
+    id: string;
+    productId: string;
+    productName: string;
+    productSlug: string;
+    variantId: string | null;
+    variantName: string | null;
+    quantity: number;
+    unitPrice: number;
+    lineTotal: number;
+    imageUrl: string | null;
+    modifiers: unknown;
+    notes: string | null;
+  }[];
+  subtotal: number;
+  deliveryFee: number;
+  total: number;
+  itemCount: number;
+}
+
+const DEFAULT_DELIVERY_FEE = 3.99;
+const FREE_DELIVERY_THRESHOLD = 30;
+
+export async function getCartSummary(tenantId: string, token: string): Promise<CartSummary | null> {
+  const cart = await prisma.cart.findUnique({
+    where: { token },
+    include: {
+      items: true,
+    },
+  });
+  if (!cart || cart.tenantId !== tenantId) return null;
+
+  // enrich items with product info
+  const productIds = [...new Set(cart.items.map((i) => i.productId))];
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    include: { images: { where: { isPrimary: true }, take: 1 }, variants: true },
+  });
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  const items = cart.items.map((item) => {
+    const product = productMap.get(item.productId);
+    const variant = item.variantId
+      ? product?.variants.find((v) => v.id === item.variantId)
+      : null;
+    const unitPrice = Number(item.unitPrice);
+    return {
+      id: item.id,
+      productId: item.productId,
+      productName: product?.name ?? 'Unknown',
+      productSlug: product?.slug ?? '',
+      variantId: item.variantId,
+      variantName: variant?.name ?? null,
+      quantity: item.quantity,
+      unitPrice,
+      lineTotal: unitPrice * item.quantity,
+      imageUrl: product?.images[0]?.url ?? null,
+      modifiers: item.modifiers,
+      notes: item.notes,
+    };
+  });
+
+  const subtotal = items.reduce((sum, i) => sum + i.lineTotal, 0);
+  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DEFAULT_DELIVERY_FEE;
+
+  return {
+    cartId: cart.id,
+    token: cart.token,
+    items,
+    subtotal: Math.round(subtotal * 100) / 100,
+    deliveryFee,
+    total: Math.round((subtotal + deliveryFee) * 100) / 100,
+    itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
+  };
+}
