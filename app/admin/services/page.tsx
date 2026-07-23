@@ -65,6 +65,7 @@ export default function ServicesPage() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [loadingDialog, setLoadingDialog] = useState(false);
+  const [lastTestResult, setLastTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const canWrite = hasPermission('services:platform:write');
   const canTest = hasPermission('services:platform:test');
@@ -102,6 +103,7 @@ export default function ServicesPage() {
       }
       setActive({ svc, meta });
       setForm({});
+      setLastTestResult(null);
       setLoadingDialog(true);
       try {
         const res = await fetch(`/api/v1/services/${svc.serviceType}`, {
@@ -226,13 +228,21 @@ export default function ServicesPage() {
       const data = await res.json();
       if (res.ok) {
         const t = data.data?.test;
+        setLastTestResult({ success: Boolean(t?.success), message: t?.message ?? (t?.success ? 'Connection successful' : 'Connection test failed') });
         if (t?.success) toast.success(t.message ?? 'Connection successful');
         else toast.error(t?.message ?? 'Connection test failed');
+        // Reflect the new status in the still-open dialog immediately — load()
+        // alone only refreshes the card grid, which is hidden behind this modal.
+        setActive((prev) =>
+          prev ? { ...prev, svc: { ...prev.svc, status: t?.success ? 'CONNECTED' : 'ERROR', configured: true } } : prev
+        );
         load();
       } else {
+        setLastTestResult({ success: false, message: data.error?.message ?? 'Test failed' });
         toast.error(data.error?.message ?? 'Test failed');
       }
     } catch {
+      setLastTestResult({ success: false, message: 'Network error during test' });
       toast.error('Network error during test');
     } finally {
       setTesting(false);
@@ -387,6 +397,22 @@ export default function ServicesPage() {
                 </div>
               ) : (
                 <div className="space-y-4 py-2">
+                  {lastTestResult && (
+                    <div
+                      className={`flex items-start gap-2 rounded-md p-3 text-xs ${
+                        lastTestResult.success
+                          ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+                          : 'bg-red-500/10 text-red-700 dark:text-red-400'
+                      }`}
+                    >
+                      {lastTestResult.success ? (
+                        <CheckCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      ) : (
+                        <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      )}
+                      <span>{lastTestResult.message}</span>
+                    </div>
+                  )}
                   {active.svc.configured && (
                     <div className="flex items-start gap-2 rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
                       <KeyRound className="h-3.5 w-3.5 mt-0.5 shrink-0" />
