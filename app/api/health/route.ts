@@ -1,12 +1,15 @@
 import { withRoute } from '@/lib/api/route';
 import { ok } from '@/lib/api/response';
-import { prisma } from '@/lib/db';
 import { isRedisConfigured } from '@/lib/cache/redis';
 import { isQStashConfigured } from '@/lib/events/qstash';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export const GET = withRoute(async () => {
+  // Lazy import prisma to avoid build-time initialization issues
+  const { prisma } = await import('@/lib/db');
+  
   let dbOk = false;
   const start = Date.now();
   try {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, createContext, useContext, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -29,38 +29,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-
-// ── Auth context ────────────────────────────────────────
-export interface AdminUser {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-}
-
-interface AdminAuthCtx {
-  user: AdminUser | null;
-  permissions: string[];
-  csrfToken: string;
-  loading: boolean;
-  logout: () => Promise<void>;
-  hasPermission: (perm: string) => boolean;
-  authHeaders: () => Record<string, string>;
-}
-
-const AuthCtx = createContext<AdminAuthCtx>({
-  user: null,
-  permissions: [],
-  csrfToken: '',
-  loading: true,
-  logout: async () => {},
-  hasPermission: () => false,
-  authHeaders: () => ({}),
-});
-
-export function useAdmin() {
-  return useContext(AuthCtx);
-}
+import { AuthCtx, type AdminUser } from '@/lib/admin-auth-context';
 
 // ── Nav items ───────────────────────────────────────────
 const NAV_ITEMS = [
