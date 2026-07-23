@@ -124,13 +124,25 @@ export class S3StorageAdapter extends BaseAdapter implements IStorageAdapter {
     try {
       const { client } = await this.makeClient(credentials);
       const {
-        HeadBucketCommand,
+        GetBucketLocationCommand,
         PutObjectCommand,
         DeleteObjectCommand,
       } = await import('@aws-sdk/client-s3');
 
-      // 1. Bucket exists & reachable in this region.
-      await client.send(new HeadBucketCommand({ Bucket: s.bucketName }));
+      // 1. Validate credentials AND resolve the bucket's real region.
+      //    GetBucketLocation returns a parseable error body (InvalidAccessKeyId,
+      //    SignatureDoesNotMatch, AccessDenied, NoSuchBucket…), unlike HeadBucket
+      //    which replies with a bare 403 and no error code — the reason a wrong
+      //    key previously looked like a generic "Access denied".
+      const loc = await client.send(new GetBucketLocationCommand({ Bucket: s.bucketName }));
+      const actualRegion = (loc.LocationConstraint as string) || 'us-east-1';
+      if (actualRegion && actualRegion !== s.region) {
+        return {
+          success: false,
+          message: `Bucket "${s.bucketName}" is in region "${actualRegion}", but the configured region is "${s.region}". Change the region to "${actualRegion}".`,
+          details: verboseServiceErrors() ? { actualRegion, configuredRegion: s.region } : undefined,
+        };
+      }
 
       // 2. Write permission — put and delete a tiny probe object.
       const probeKey = `${(s.folderPrefix || '').replace(/\/$/, '')}/_healthcheck/probe-${Date.now()}.txt`
@@ -223,11 +235,13 @@ export class S3StorageAdapter extends BaseAdapter implements IStorageAdapter {
     if (code === 'PermanentRedirect' || code === 'BadRequest' || http === 301) {
       return `Bucket "${s.bucketName}" exists but not in region "${s.region}". Set the correct AWS region.`;
     }
+    if (code === 'InvalidAccessKeyId' || code === 'InvalidClientTokenId' || code === 'UnrecognizedClientException') {
+      return 'The AWS Access Key ID does not exist in AWS. The key was mistyped, deleted/deactivated in IAM, or belongs to a different AWS account than the bucket. Create a fresh access key for an IAM user in the account that owns this bucket.';
+    }
+    if (code === 'SignatureDoesNotMatch') return 'The AWS Secret Access Key is incorrect (it does not match the Access Key ID).';
     if (code === 'Forbidden' || code === 'AccessDenied' || http === 403) {
       return `Access denied for bucket "${s.bucketName}". The access key lacks permission (need s3:PutObject / s3:DeleteObject / s3:ListBucket).`;
     }
-    if (code === 'InvalidAccessKeyId') return 'The AWS Access Key ID is not valid.';
-    if (code === 'SignatureDoesNotMatch') return 'The AWS Secret Access Key is incorrect.';
     if (code === 'UnknownEndpoint' || code === 'NetworkingError') {
       return `Could not reach AWS for region "${s.region}". Check the region value.`;
     }
