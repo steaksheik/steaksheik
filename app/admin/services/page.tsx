@@ -28,7 +28,7 @@ import {
   KeyRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { metaFor, type ServiceMeta } from '@/lib/plugins/service-fields';
+import { metaFor, type ServiceMeta, type ServiceFieldDef } from '@/lib/plugins/service-fields';
 
 interface ServiceInfo {
   serviceType: string;
@@ -47,6 +47,13 @@ function statusIcon(status: string) {
   if (status === 'CONFIGURED') return <AlertCircle className="h-4 w-4 text-amber-500" />;
   if (status === 'ERROR') return <XCircle className="h-4 w-4 text-red-500" />;
   return <XCircle className="h-4 w-4 text-muted-foreground" />;
+}
+
+/** A field is visible when it has no showIf, or the referenced field's current
+ *  value is in the allowed set. Drives conditional provider-specific forms. */
+function fieldVisible(f: ServiceFieldDef, form: Record<string, string>): boolean {
+  if (!f.showIf) return true;
+  return f.showIf.in.includes(form[f.showIf.key] ?? '');
 }
 
 export default function ServicesPage() {
@@ -104,9 +111,14 @@ export default function ServicesPage() {
         const data = await res.json();
         const cfg = (data.data?.service?.config ?? {}) as Record<string, unknown>;
         // Prefill only non-secret config settings; credentials stay blank/masked.
+        // Apply declared defaults when no stored value exists (e.g. provider=ses).
         const initial: Record<string, string> = {};
         for (const f of meta.fields) {
-          if (f.kind === 'config' && cfg[f.key] != null) initial[f.key] = String(cfg[f.key]);
+          if (f.kind === 'config' && cfg[f.key] != null) {
+            initial[f.key] = String(cfg[f.key]);
+          } else if (f.default != null && initial[f.key] == null) {
+            initial[f.key] = f.default;
+          }
         }
         setForm(initial);
       } catch {
@@ -123,6 +135,8 @@ export default function ServicesPage() {
     const credentials: Record<string, string> = {};
     const config: Record<string, string> = {};
     for (const f of active.meta.fields) {
+      // Only persist fields relevant to the current provider selection.
+      if (!fieldVisible(f, form)) continue;
       const val = form[f.key]?.trim();
       if (!val) continue;
       if (f.kind === 'credential') credentials[f.key] = val;
@@ -134,13 +148,13 @@ export default function ServicesPage() {
   const validate = useCallback(() => {
     if (!active) return false;
     const missing = active.meta.fields.filter(
-      (f) => f.required && f.kind === 'config' && !form[f.key]?.trim()
+      (f) => f.required && f.kind === 'config' && fieldVisible(f, form) && !form[f.key]?.trim()
     );
     // Required credentials only enforced on first configure; on re-save allow
     // leaving secret fields blank to keep existing values.
     if (!active.svc.configured) {
       const missingCreds = active.meta.fields.filter(
-        (f) => f.required && f.kind === 'credential' && !form[f.key]?.trim()
+        (f) => f.required && f.kind === 'credential' && fieldVisible(f, form) && !form[f.key]?.trim()
       );
       if (missingCreds.length) {
         toast.error(`Please fill: ${missingCreds.map((f) => f.label).join(', ')}`);
@@ -375,7 +389,37 @@ export default function ServicesPage() {
                       </span>
                     </div>
                   )}
-                  {active.meta.fields.map((f) => (
+                  {(active.meta.presets ?? []).some(
+                    (p) => !p.when || p.when.in.includes(form[p.when.key] ?? '')
+                  ) && (
+                    <div className="space-y-1.5">
+                      <Label className="text-xs">Quick presets</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {(active.meta.presets ?? [])
+                          .filter((p) => !p.when || p.when.in.includes(form[p.when.key] ?? ''))
+                          .map((p) => (
+                            <Button
+                              key={p.label}
+                              type="button"
+                              size="sm"
+                              variant="secondary"
+                              disabled={!canWrite}
+                              title={p.hint}
+                              onClick={() =>
+                                setForm((prev) => ({ ...prev, ...p.values }))
+                              }
+                            >
+                              {p.label}
+                            </Button>
+                          ))}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Autofills host &amp; port — you still enter your username and password.
+                      </p>
+                    </div>
+                  )}
+
+                  {active.meta.fields.filter((f) => fieldVisible(f, form)).map((f) => (
                     <div key={f.key} className="space-y-1.5">
                       <Label htmlFor={f.key} className="text-xs">
                         {f.label}
@@ -386,19 +430,35 @@ export default function ServicesPage() {
                           </span>
                         )}
                       </Label>
-                      <Input
-                        id={f.key}
-                        type={f.secret ? 'password' : 'text'}
-                        autoComplete="off"
-                        placeholder={
-                          f.secret && active.svc.configured
-                            ? '•••••••• (unchanged)'
-                            : f.placeholder ?? ''
-                        }
-                        value={form[f.key] ?? ''}
-                        disabled={!canWrite}
-                        onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                      />
+                      {f.type === 'select' ? (
+                        <select
+                          id={f.key}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          value={form[f.key] ?? f.default ?? ''}
+                          disabled={!canWrite}
+                          onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        >
+                          {(f.options ?? []).map((o) => (
+                            <option key={o.value} value={o.value}>
+                              {o.label}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          id={f.key}
+                          type={f.secret ? 'password' : f.type === 'number' ? 'number' : 'text'}
+                          autoComplete="off"
+                          placeholder={
+                            f.secret && active.svc.configured
+                              ? '•••••••• (unchanged)'
+                              : f.placeholder ?? ''
+                          }
+                          value={form[f.key] ?? ''}
+                          disabled={!canWrite}
+                          onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        />
+                      )}
                       {f.help && <p className="text-[11px] text-muted-foreground">{f.help}</p>}
                     </div>
                   ))}

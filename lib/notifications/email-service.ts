@@ -11,6 +11,56 @@ interface SendEmailOpts {
 
 const ADMIN_EMAIL = 'steaksheikh4@gmail.com';
 
+/**
+ * Attempt to send through the admin-configured email provider
+ * (Amazon SES / SMTP / Resend), selected in /admin/services.
+ * Returns true on success. Any failure returns false so the caller
+ * falls back to the Abacus notification API and then console logging —
+ * email must never block order processing.
+ */
+async function trySendViaConfiguredProvider(
+  to: string,
+  subject: string,
+  html: string,
+  replyTo?: string,
+): Promise<boolean> {
+  try {
+    const { prisma } = await import('@/lib/db');
+    const svc = await prisma.platformService.findFirst({
+      where: { serviceType: 'EMAIL' as never, isEnabled: true },
+    });
+    if (!svc) return false;
+
+    const { decryptCredentials } = await import('@/lib/security/crypto');
+    const { pluginRegistry } = await import('@/lib/plugins/registry');
+
+    const creds = decryptCredentials((svc.credentials ?? {}) as Record<string, unknown>);
+    const config = (svc.config ?? {}) as Record<string, unknown>;
+    await pluginRegistry.reconfigure('EMAIL', { ...config, ...creds });
+    const adapter = pluginRegistry.get('EMAIL') as unknown as {
+      isFallback: boolean;
+      send: (p: { to: string; subject: string; html: string; replyTo?: string }) => Promise<{ success: boolean }>;
+    };
+    // If the primary provider isn't actually usable the registry returns the
+    // console fallback — skip it here so the Abacus API path can take over.
+    if (adapter.isFallback) return false;
+    const result = await adapter.send({ to, subject, html, replyTo });
+    if (result.success) {
+      logger.info('[notifications] Email sent via configured provider', {
+        provider: config.provider ?? 'ses',
+        subject,
+      });
+      return true;
+    }
+    return false;
+  } catch (err) {
+    logger.warn('[notifications] Configured provider send failed, falling back', {
+      error: (err as Error).message,
+    });
+    return false;
+  }
+}
+
 function getSenderInfo() {
   const appUrl = process.env.NEXTAUTH_URL || '';
   let hostname = 'darkkitchen.abacusai.app';
@@ -27,11 +77,19 @@ function getSenderInfo() {
  */
 export async function sendNotificationEmail(opts: SendEmailOpts): Promise<boolean> {
   const { notificationId, subject, body, recipientEmail, replyTo } = opts;
+  const to = recipientEmail ?? ADMIN_EMAIL;
+
+  // 1) Prefer the admin-configured provider (SES / SMTP / Resend) when enabled.
+  if (await trySendViaConfiguredProvider(to, subject, body, replyTo)) {
+    return true;
+  }
+
+  // 2) Fall back to the Abacus notification API (if credentials are present).
   const apiKey = process.env.ABACUSAI_API_KEY;
   const appId = process.env.WEB_APP_ID;
 
   if (!apiKey || !appId) {
-    logger.warn('[notifications] Missing ABACUSAI_API_KEY or WEB_APP_ID, skipping email');
+    logger.warn('[notifications] No configured email provider and missing ABACUSAI_API_KEY/WEB_APP_ID, skipping email');
     return false;
   }
 

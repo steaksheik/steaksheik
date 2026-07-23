@@ -1,7 +1,7 @@
 import { IPluginAdapter, PlatformServiceType, HealthCheckResult } from '@/lib/plugins/types';
 import { CircuitBreaker } from '@/lib/plugins/circuit-breaker';
 import { logger } from '@/lib/logger';
-import { SesEmailAdapter, ConsoleEmailAdapter } from '@/lib/plugins/adapters/email';
+import { MultiProviderEmailAdapter, ConsoleEmailAdapter } from '@/lib/plugins/adapters/email';
 import { TwilioSmsAdapter, ConsoleSmsAdapter } from '@/lib/plugins/adapters/sms';
 import { S3StorageAdapter, LocalStorageAdapter } from '@/lib/plugins/adapters/storage';
 import { StripePaymentAdapter, NoopPaymentAdapter } from '@/lib/plugins/adapters/payment';
@@ -37,7 +37,7 @@ class PluginRegistry {
    *  runtime credentials are loaded from PlatformService. */
   init(): void {
     if (this.initialized) return;
-    this.registerPair('EMAIL', new SesEmailAdapter(), new ConsoleEmailAdapter());
+    this.registerPair('EMAIL', new MultiProviderEmailAdapter(), new ConsoleEmailAdapter());
     this.registerPair('SMS', new TwilioSmsAdapter(), new ConsoleSmsAdapter());
     this.registerPair('STORAGE', new S3StorageAdapter(), new LocalStorageAdapter());
     this.registerPair('PAYMENT', new StripePaymentAdapter(), new NoopPaymentAdapter());

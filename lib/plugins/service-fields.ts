@@ -13,6 +13,23 @@ export interface ServiceFieldDef {
   required?: boolean;
   placeholder?: string;
   help?: string;
+  /** input type — defaults to text. `select` renders a dropdown. */
+  type?: 'text' | 'select' | 'number';
+  /** options for `select` fields */
+  options?: { value: string; label: string }[];
+  /** default value applied when the form opens with no stored value */
+  default?: string;
+  /** only show this field when another field's value is one of `in` */
+  showIf?: { key: string; in: string[] };
+}
+
+/** A one-click preset that autofills a set of field values (e.g. SMTP hosts). */
+export interface ServicePreset {
+  label: string;
+  /** preset only applies while this field equals one of `when` */
+  when?: { key: string; in: string[] };
+  values: Record<string, string>;
+  hint?: string;
 }
 
 export interface ServiceMeta {
@@ -23,6 +40,7 @@ export interface ServiceMeta {
   description: string;
   docsUrl?: string;
   fields: ServiceFieldDef[];
+  presets?: ServicePreset[];
 }
 
 export const SERVICE_META: Record<string, ServiceMeta> = {
@@ -30,14 +48,49 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     serviceType: 'EMAIL',
     category: 'Communications',
     label: 'Transactional Email',
-    provider: 'Amazon SES',
-    description: 'Send order confirmations, receipts and alerts via Amazon SES.',
-    docsUrl: 'https://console.aws.amazon.com/ses',
+    provider: 'SES · SMTP · Resend',
+    description:
+      'Send order confirmations, receipts and alerts. Choose your provider — Amazon SES, any SMTP server (Gmail, Microsoft 365, webmail) or Resend.',
+    docsUrl: 'https://resend.com/docs',
     fields: [
-      { key: 'accessKeyId', label: 'AWS Access Key ID', kind: 'credential', required: true, placeholder: 'AKIA...' },
-      { key: 'secretAccessKey', label: 'AWS Secret Access Key', kind: 'credential', secret: true, required: true },
-      { key: 'region', label: 'AWS Region', kind: 'credential', required: true, placeholder: 'eu-west-2' },
-      { key: 'fromEmail', label: 'Default From Address', kind: 'config', placeholder: 'orders@yourdomain.com' },
+      {
+        key: 'provider',
+        label: 'Email Provider',
+        kind: 'config',
+        type: 'select',
+        required: true,
+        default: 'ses',
+        help: 'Pick which service sends your emails. SMTP covers Gmail, Microsoft 365 and most webmail hosts.',
+        options: [
+          { value: 'ses', label: 'Amazon SES' },
+          { value: 'smtp', label: 'SMTP (Gmail / Microsoft 365 / Webmail)' },
+          { value: 'resend', label: 'Resend' },
+        ],
+      },
+
+      // Shared sender identity (used by all providers)
+      { key: 'fromEmail', label: 'From Address', kind: 'config', required: true, placeholder: 'orders@yourdomain.com', help: 'The address recipients see. Must be verified/authorised with your provider.' },
+      { key: 'fromName', label: 'From Name', kind: 'config', placeholder: 'The Steak Sheikh' },
+
+      // ── Amazon SES ──
+      { key: 'accessKeyId', label: 'AWS Access Key ID', kind: 'credential', required: true, placeholder: 'AKIA...', showIf: { key: 'provider', in: ['ses'] } },
+      { key: 'secretAccessKey', label: 'AWS Secret Access Key', kind: 'credential', secret: true, required: true, showIf: { key: 'provider', in: ['ses'] } },
+      { key: 'region', label: 'AWS Region', kind: 'config', required: true, placeholder: 'eu-west-2', showIf: { key: 'provider', in: ['ses'] } },
+
+      // ── SMTP (Gmail / Microsoft 365 / Webmail / any host) ──
+      { key: 'host', label: 'SMTP Host', kind: 'config', required: true, placeholder: 'smtp.gmail.com', showIf: { key: 'provider', in: ['smtp'] } },
+      { key: 'port', label: 'SMTP Port', kind: 'config', type: 'number', required: true, default: '587', placeholder: '587', help: '587 for STARTTLS (recommended) or 465 for SSL.', showIf: { key: 'provider', in: ['smtp'] } },
+      { key: 'secure', label: 'Use SSL (port 465)', kind: 'config', type: 'select', default: 'false', options: [{ value: 'false', label: 'No — STARTTLS (587)' }, { value: 'true', label: 'Yes — SSL/TLS (465)' }], showIf: { key: 'provider', in: ['smtp'] } },
+      { key: 'username', label: 'SMTP Username', kind: 'config', required: true, placeholder: 'you@gmail.com', help: 'Usually your full email address.', showIf: { key: 'provider', in: ['smtp'] } },
+      { key: 'password', label: 'SMTP Password / App Password', kind: 'credential', secret: true, required: true, help: 'For Gmail & Microsoft 365 use an App Password (not your normal login password).', showIf: { key: 'provider', in: ['smtp'] } },
+
+      // ── Resend ──
+      { key: 'apiKey', label: 'Resend API Key', kind: 'credential', secret: true, required: true, placeholder: 're_...', showIf: { key: 'provider', in: ['resend'] } },
+    ],
+    presets: [
+      { label: 'Gmail / Google Workspace', when: { key: 'provider', in: ['smtp'] }, values: { host: 'smtp.gmail.com', port: '587', secure: 'false' }, hint: 'Requires a Google App Password (2-Step Verification must be on).' },
+      { label: 'Microsoft 365 / Outlook', when: { key: 'provider', in: ['smtp'] }, values: { host: 'smtp.office365.com', port: '587', secure: 'false' }, hint: 'Use an App Password if MFA is enabled on the account.' },
+      { label: 'Webmail (cPanel / generic)', when: { key: 'provider', in: ['smtp'] }, values: { host: 'mail.yourdomain.com', port: '465', secure: 'true' }, hint: 'Replace the host with your hosting provider\u2019s mail server.' },
     ],
   },
   SMS: {

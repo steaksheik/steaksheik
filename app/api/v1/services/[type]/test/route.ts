@@ -25,9 +25,13 @@ export const POST = withRoute(async (req, { params }) => {
   const type = typeOf(params);
   const svc = await prisma.platformService.findUnique({ where: { tenantId_serviceType: { tenantId: ctx.tenantId, serviceType: type as never } } });
   const creds = svc ? decryptCredentials((svc.credentials ?? {}) as Record<string, unknown>) : {};
-  if (svc) await pluginRegistry.reconfigure(type, creds);
+  const config = (svc?.config ?? {}) as Record<string, unknown>;
+  // Merge non-secret config (provider, host, fromEmail…) with credentials so
+  // the test reflects the exact provider/settings selected in the backend.
+  const merged = { ...config, ...creds };
+  if (svc) await pluginRegistry.reconfigure(type, merged);
   const adapter = pluginRegistry.get(type);
-  const result = await adapter.testConnection(creds);
+  const result = await adapter.testConnection(merged);
   const health = await adapter.healthCheck();
   if (svc) {
     await prisma.platformService.update({

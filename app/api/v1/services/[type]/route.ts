@@ -40,13 +40,27 @@ export const PUT = withRoute(async (req, { params }) => {
   const ctx = await requirePermission(req as NextRequest, 'services:platform:write');
   const type = typeOf(params);
   const body = putSchema.parse(await (req as NextRequest).json().catch(() => ({})));
-  const encrypted = encryptCredentials(body.credentials ?? {});
+
+  // Load any existing record so blank secret fields on re-save preserve their
+  // previously stored values (the UI only sends fields the admin actually filled).
+  const existing = await prisma.platformService.findUnique({
+    where: { tenantId_serviceType: { tenantId: ctx.tenantId, serviceType: type as never } },
+  });
+  const existingCreds = existing ? decryptCredentials((existing.credentials ?? {}) as Record<string, unknown>) : {};
+  const existingConfig = (existing?.config ?? {}) as Record<string, unknown>;
+
+  const mergedCreds = { ...existingCreds, ...(body.credentials ?? {}) };
+  const mergedConfig = { ...existingConfig, ...(body.config ?? {}) };
+  const encrypted = encryptCredentials(mergedCreds);
+
   const svc = await prisma.platformService.upsert({
     where: { tenantId_serviceType: { tenantId: ctx.tenantId, serviceType: type as never } },
-    update: { adapterType: body.adapterType, displayName: body.displayName ?? type, credentials: encrypted as never, config: (body.config ?? {}) as never, status: 'CONFIGURED' },
-    create: { tenantId: ctx.tenantId, serviceType: type as never, adapterType: body.adapterType, displayName: body.displayName ?? type, credentials: encrypted as never, config: (body.config ?? {}) as never, status: 'CONFIGURED', isEnabled: false },
+    update: { adapterType: body.adapterType, displayName: body.displayName ?? type, credentials: encrypted as never, config: mergedConfig as never, status: 'CONFIGURED' },
+    create: { tenantId: ctx.tenantId, serviceType: type as never, adapterType: body.adapterType, displayName: body.displayName ?? type, credentials: encrypted as never, config: mergedConfig as never, status: 'CONFIGURED', isEnabled: false },
   });
-  await pluginRegistry.reconfigure(type, decryptCredentials((svc.credentials ?? {}) as Record<string, unknown>));
-  await auditLog({ tenantId: ctx.tenantId, userId: ctx.session.userId, action: 'service.configured', resource: 'PlatformService', resourceId: type, after: { adapterType: body.adapterType }, ipAddress: ctx.ip, userAgent: ctx.userAgent });
+  // Adapters receive non-secret config (provider, host, region, fromEmail…)
+  // merged with decrypted credentials so provider selection is respected.
+  await pluginRegistry.reconfigure(type, { ...mergedConfig, ...mergedCreds });
+  await auditLog({ tenantId: ctx.tenantId, userId: ctx.session.userId, action: 'service.configured', resource: 'PlatformService', resourceId: type, after: { adapterType: body.adapterType, provider: mergedConfig.provider }, ipAddress: ctx.ip, userAgent: ctx.userAgent });
   return ok({ service: { ...svc, credentials: maskCredentials((svc.credentials ?? {}) as Record<string, unknown>) } });
 });

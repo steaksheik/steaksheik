@@ -52,3 +52,5 @@ yarn-error.log*
 # Auto-generated document formats
 *.pdf
 *.docx
+.vercel
+.env*
