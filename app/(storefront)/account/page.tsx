@@ -16,6 +16,11 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // Communication preferences (PECR/GDPR marketing consent)
+  const [emailConsent, setEmailConsent] = useState(false);
+  const [smsConsent, setSmsConsent] = useState(false);
+  const [savingConsent, setSavingConsent] = useState(false);
+
   // Password change
   const [showPwd, setShowPwd] = useState(false);
   const [currentPwd, setCurrentPwd] = useState('');
@@ -33,11 +38,44 @@ export default function ProfilePage() {
         setLastName(d.lastName || '');
         setPhone(d.phone || '');
         setEmail(d.email || '');
+        setEmailConsent(Boolean(d.marketingEmailConsent));
+        setSmsConsent(Boolean(d.marketingSmsConsent));
       }
       setLoading(false);
     }
     load();
   }, []);
+
+  async function handleConsentChange(field: 'email' | 'sms', value: boolean) {
+    const prevEmail = emailConsent;
+    const prevSms = smsConsent;
+    if (field === 'email') setEmailConsent(value); else setSmsConsent(value);
+    setSavingConsent(true);
+    try {
+      const res = await fetch('/api/v1/customers/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          field === 'email' ? { marketingEmailConsent: value } : { marketingSmsConsent: value }
+        ),
+      });
+      if (res.ok) {
+        toast.success(value ? 'Subscribed' : 'Unsubscribed');
+      } else {
+        // Revert on failure
+        setEmailConsent(prevEmail);
+        setSmsConsent(prevSms);
+        const json = await res.json();
+        toast.error(json.error?.message || 'Failed to update preference');
+      }
+    } catch {
+      setEmailConsent(prevEmail);
+      setSmsConsent(prevSms);
+      toast.error('Network error');
+    } finally {
+      setSavingConsent(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -140,6 +178,34 @@ export default function ProfilePage() {
         {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
         Save Changes
       </button>
+
+      {/* Communication Preferences */}
+      <div className="border-t border-white/10 pt-8">
+        <h3 className="font-heading text-lg tracking-wide mb-1">COMMUNICATION PREFERENCES</h3>
+        <p className="text-sm text-neutral-400 mb-4">Choose what marketing messages you'd like to receive. This never affects order confirmations or delivery updates.</p>
+        <div className="space-y-3 max-w-md">
+          <label className="flex items-start gap-2.5 text-sm text-neutral-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={emailConsent}
+              disabled={savingConsent}
+              onChange={e => handleConsentChange('email', e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-white/5"
+            />
+            <span>Marketing emails about offers and new menu items</span>
+          </label>
+          <label className="flex items-start gap-2.5 text-sm text-neutral-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={smsConsent}
+              disabled={savingConsent}
+              onChange={e => handleConsentChange('sms', e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-white/5"
+            />
+            <span>Marketing texts about offers and new menu items</span>
+          </label>
+        </div>
+      </div>
 
       {/* Password Section */}
       <div className="border-t border-white/10 pt-8">
