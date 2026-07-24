@@ -17,7 +17,7 @@ export function contentSecurityPolicy(): string {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https: blob:",
     "font-src 'self' https://fonts.gstatic.com data:",
-    "connect-src 'self' https://*.upstash.io https://*.sentry.io https://*.posthog.com https://api.stripe.com",
+    "connect-src 'self' https://*.upstash.io https://*.sentry.io https://*.posthog.com https://api.stripe.com https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.analytics.google.com",
     "frame-src https://js.stripe.com",
   ].join('; ');
 }
