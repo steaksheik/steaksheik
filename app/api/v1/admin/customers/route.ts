@@ -19,6 +19,8 @@ export const GET = withRoute(async (req) => {
       phone: true,
       status: true,
       createdAt: true,
+      marketingEmailConsent: true,
+      marketingSmsConsent: true,
       _count: { select: { orders: true } },
     },
     orderBy: { createdAt: 'desc' },
