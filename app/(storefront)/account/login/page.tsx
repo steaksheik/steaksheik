@@ -19,6 +19,8 @@ export default function CustomerLoginPage() {
   const [lastName, setLastName] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [emailConsent, setEmailConsent] = useState(false);
+  const [smsConsent, setSmsConsent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,7 +44,11 @@ export default function CustomerLoginPage() {
         const res = await fetch('/api/v1/customers/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, firstName, lastName }),
+          body: JSON.stringify({
+            email, password, firstName, lastName,
+            marketingEmailConsent: emailConsent,
+            marketingSmsConsent: smsConsent,
+          }),
         });
         if (res.ok) {
           // Auto-login after registration
@@ -126,6 +132,28 @@ export default function CustomerLoginPage() {
             </button>
           </div>
         </div>
+        {mode === 'register' && (
+          <div className="space-y-2.5 pt-1">
+            <label className="flex items-start gap-2.5 text-xs text-neutral-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={emailConsent}
+                onChange={e => setEmailConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-white/5"
+              />
+              <span>Send me marketing emails about offers and new menu items. You can unsubscribe anytime.</span>
+            </label>
+            <label className="flex items-start gap-2.5 text-xs text-neutral-400 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={smsConsent}
+                onChange={e => setSmsConsent(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/20 bg-white/5"
+              />
+              <span>Send me marketing texts about offers and new menu items. Reply STOP anytime to opt out.</span>
+            </label>
+          </div>
+        )}
         <button
           type="submit"
           disabled={loading}
