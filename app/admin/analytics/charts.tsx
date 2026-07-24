@@ -233,6 +233,88 @@ export function HourlyChart({ data }: { data: { hour: number; count: number }[] 
   );
 }
 
+// ── Visitors Trend Chart ───────────────────────────────────
+export function VisitorsChart({ data }: { data: { date: string; visitors: number; sessions: number }[] }) {
+  if (!data.length) return <EmptyState />;
+
+  const formatted = data.map((d) => ({ ...d, label: formatDate(d.date) }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <AreaChart data={formatted} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <defs>
+          <linearGradient id="visGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#c9a96e" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#c9a96e" stopOpacity={0} />
+          </linearGradient>
+          <linearGradient id="sessGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.4} />
+        <XAxis
+          dataKey="label"
+          tick={{ fontSize: 11 }}
+          tickLine={false}
+          axisLine={false}
+          interval={Math.max(0, Math.floor(formatted.length / 8) - 1)}
+        />
+        <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <Tooltip
+          content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
+            return (
+              <div className="rounded-lg border bg-background p-3 shadow-lg">
+                <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+                {payload.map((p) => (
+                  <p key={p.name} className="text-sm">
+                    <span className="font-medium">{p.name}:</span> {p.value}
+                  </p>
+                ))}
+              </div>
+            );
+          }}
+        />
+        <Area type="monotone" dataKey="visitors" stroke="#c9a96e" strokeWidth={2} fill="url(#visGrad)" name="Visitors" />
+        <Area type="monotone" dataKey="sessions" stroke="#6366f1" strokeWidth={1.5} fill="url(#sessGrad)" name="Sessions" />
+      </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── Traffic Sources Bar Chart ──────────────────────────────
+export function TrafficSourcesChart({ data }: { data: { channel: string; sessions: number }[] }) {
+  if (!data.length) return <EmptyState />;
+
+  const formatted = data.map((d) => ({
+    name: d.channel.length > 20 ? d.channel.slice(0, 20) + '…' : d.channel,
+    sessions: d.sessions,
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height={300}>
+      <BarChart data={formatted} layout="vertical" margin={{ top: 5, right: 20, left: 5, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.4} horizontal={false} />
+        <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+        <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={130} />
+        <Tooltip
+          content={({ active, payload, label }) => {
+            if (!active || !payload?.length) return null;
+            return (
+              <div className="rounded-lg border bg-background p-3 shadow-lg">
+                <p className="text-xs font-medium mb-1">{label}</p>
+                <p className="text-sm">Sessions: {payload[0].value}</p>
+              </div>
+            );
+          }}
+        />
+        <Bar dataKey="sessions" fill="#c9a96e" radius={[0, 4, 4, 0]} barSize={20} />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
+
 // ── Shared ───────────────────────────────────────────────
 function EmptyState() {
   return (
