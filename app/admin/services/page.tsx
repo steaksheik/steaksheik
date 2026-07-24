@@ -478,6 +478,20 @@ export default function ServicesPage() {
                             </option>
                           ))}
                         </select>
+                                            ) : f.type === 'textarea' ? (
+                        <Textarea
+                          id={f.key}
+                          rows={6}
+                          className="font-mono text-xs"
+                          placeholder={
+                            f.secret && active.svc.configured
+                              ? '•••••••• (unchanged)'
+                              : f.placeholder ?? ''
+                          }
+                          value={form[f.key] ?? ''}
+                          disabled={!canWrite}
+                          onChange={(e) => setForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                        />
                       ) : (
                         <Input
                           id={f.key}
