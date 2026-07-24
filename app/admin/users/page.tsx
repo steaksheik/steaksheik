@@ -59,7 +59,12 @@ const ROLE_PRESETS: { name: string; description: string; keys: string[] }[] = [
     keys: ['kitchen:queue:read', 'kitchen:queue:write', 'kitchen:settings:read', 'ordering:orders:read'],
   },
   {
-    name: 'Marketer',
+    name: 'Dispatch Staff',
+    description: 'Sees orders ready for delivery, updates dispatch status and views delivery contacts.',
+    keys: ['ordering:orders:read', 'ordering:orders:write', 'ordering:customers:read'],
+  },
+  {
+    name: 'Marketing Team',
     description: 'Manages branding, homepage content and views analytics.',
     keys: [
       'branding:brand:read', 'branding:brand:write', 'branding:theme:read', 'branding:theme:write',
