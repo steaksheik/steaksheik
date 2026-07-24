@@ -14,7 +14,7 @@ export interface ServiceFieldDef {
   placeholder?: string;
   help?: string;
   /** input type — defaults to text. `select` renders a dropdown. */
-  type?: 'text' | 'select' | 'number';
+    type?: 'text' | 'select' | 'number' | 'textarea';
   /** options for `select` fields */
   options?: { value: string; label: string }[];
   /** default value applied when the form opens with no stored value */
@@ -177,6 +177,21 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     docsUrl: 'https://analytics.google.com',
     fields: [
       { key: 'measurementId', label: 'Measurement ID', kind: 'config', required: true, placeholder: 'G-XXXXXXX' },
+      {
+        key: 'propertyId',
+        label: 'GA4 Property ID',
+        kind: 'config',
+        placeholder: '123456789',
+        help: 'The numeric Property ID (not the Measurement ID above) — GA4 Admin → Property Settings. Only needed to show visitor reports in this dashboard; tracking itself works without it.',
+      },
+      {
+        key: 'serviceAccountJson',
+        label: 'Service Account JSON',
+        kind: 'credential',
+        secret: true,
+        type: 'textarea',
+        help: 'Paste the full JSON key from a Google Cloud service account. Steps: Google Cloud Console → enable "Google Analytics Data API" → create a service account → create a JSON key → in GA4 Admin → Property Access Management, add that service account’s email as a Viewer. Only needed for visitor reports in this dashboard.',
+      },
     ],
   },
   ANALYTICS_GTM: {
