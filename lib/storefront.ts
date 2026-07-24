@@ -66,6 +66,40 @@ export async function getHero(tenantId: string): Promise<HeroConfig | null> {
   };
 }
 
+export interface PublicAnalyticsConfig {
+  ga4MeasurementId: string | null;
+  gtmContainerId: string | null;
+}
+
+/**
+ * Fetch GA4/GTM IDs for enabled analytics services so the storefront can
+ * inject the real tracking scripts. Both fields are plain (non-secret)
+ * config values, not encrypted credentials.
+ */
+export async function getPublicAnalyticsConfig(tenantId: string): Promise<PublicAnalyticsConfig> {
+  try {
+    const services = await prisma.platformService.findMany({
+      where: {
+        tenantId,
+        serviceType: { in: ['ANALYTICS_GA4', 'ANALYTICS_GTM'] as never },
+        isEnabled: true,
+      },
+    });
+    const ga4 = services.find((s) => s.serviceType === ('ANALYTICS_GA4' as never));
+    const gtm = services.find((s) => s.serviceType === ('ANALYTICS_GTM' as never));
+    const measurementId = (ga4?.config as Record<string, unknown> | null)?.measurementId as string;
+    const containerId = (gtm?.config as Record<string, unknown> | null)?.containerId as string;
+    // These IDs are interpolated directly into inline <script> tags below —
+    // validate the format so a malformed saved value can't break out of it.
+    return {
+      ga4MeasurementId: measurementId && /^G-[A-Z0-9]{6,}$/i.test(measurementId) ? measurementId : null,
+      gtmContainerId: containerId && /^GTM-[A-Z0-9]{5,}$/i.test(containerId) ? containerId : null,
+    };
+  } catch {
+    return { ga4MeasurementId: null, gtmContainerId: null };
+  }
+}
+
 /** Fetch all active categories with product count. */
 export async function getCategories(tenantId: string) {
   return prisma.category.findMany({
