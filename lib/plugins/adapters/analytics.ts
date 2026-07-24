@@ -40,24 +40,42 @@ export class Ga4Adapter extends BaseAnalyticsAdapter {
     if (!id) return '';
     return `<script async src="https://www.googletagmanager.com/gtag/js?id=${id}"></script>`;
   }
-  /** GA4 uses a public client-side Measurement ID (G-XXXX) — there is no server
+    /** GA4 uses a public client-side Measurement ID (G-XXXX) — there is no server
    *  secret to authenticate. We validate the ID format and confirm the gtag
-   *  loader is reachable for it. */
+   *  loader is reachable for it. If a Property ID + Service Account JSON are
+   *  also present (needed for the in-dashboard visitor reports, not tracking
+   *  itself), that reporting credential is verified too. */
   async testConnection(credentials: Record<string, unknown>): Promise<ConnectionTestResult> {
     const id = String(credentials?.measurementId ?? this.config?.measurementId ?? '');
     if (!id) return { success: false, message: 'Measurement ID is required.' };
     if (!/^G-[A-Z0-9]{6,}$/i.test(id)) {
       return { success: false, message: 'Measurement ID should look like "G-XXXXXXXXXX".' };
     }
+    let trackingResult: ConnectionTestResult;
     try {
       const res = await fetchWithTimeout(`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`, { method: 'GET' });
-      if (res.ok) {
-        return { success: true, message: `Measurement ID "${id}" is valid and the GA4 tag loads. (GA4 is client-side; live hits appear in your GA dashboard.)` };
-      }
-      return { success: false, message: `Google returned HTTP ${res.status} loading the GA4 tag.` };
+      trackingResult = res.ok
+        ? { success: true, message: `Measurement ID "${id}" is valid and the GA4 tag loads.` }
+        : { success: false, message: `Google returned HTTP ${res.status} loading the GA4 tag.` };
     } catch (err) {
-      return { success: false, message: describeNetworkError(err) };
+      trackingResult = { success: false, message: describeNetworkError(err) };
     }
+
+    const propertyId = String(credentials?.propertyId ?? this.config?.propertyId ?? '').trim();
+    const serviceAccountJson = String(credentials?.serviceAccountJson ?? this.config?.serviceAccountJson ?? '').trim();
+    if (!propertyId || !serviceAccountJson) {
+      return {
+        ...trackingResult,
+        message: `${trackingResult.message} (No Property ID / Service Account JSON set — visitor reports in the dashboard won't be available until those are added.)`,
+      };
+    }
+
+    const { testGa4Reporting } = await import('@/lib/analytics/ga4-reporting');
+    const reportingResult = await testGa4Reporting(propertyId, serviceAccountJson);
+    return {
+      success: trackingResult.success && reportingResult.success,
+      message: `Tracking: ${trackingResult.message} Reporting: ${reportingResult.message}`,
+    };
   }
 }
 
