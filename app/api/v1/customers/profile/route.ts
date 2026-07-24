@@ -4,6 +4,8 @@ import { ok, fail } from '@/lib/api/response';
 import { prisma } from '@/lib/db';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
+import { auditLog } from '@/lib/audit/service';
+import { getClientIp } from '@/lib/auth/context';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,6 +28,8 @@ const updateSchema = z.object({
   firstName: z.string().min(1).optional(),
   lastName: z.string().min(1).optional(),
   phone: z.string().optional(),
+  marketingEmailConsent: z.boolean().optional(),
+  marketingSmsConsent: z.boolean().optional(),
 });
 
 /** GET /api/v1/customers/profile — get full profile */
@@ -47,6 +51,8 @@ export const GET = withRoute(async () => {
     phone: customer.phone,
     status: customer.status,
     createdAt: customer.createdAt,
+    marketingEmailConsent: customer.marketingEmailConsent,
+    marketingSmsConsent: customer.marketingSmsConsent,
     addresses: customer.addresses.map(a => ({
       id: a.id,
       label: a.label,
@@ -71,16 +77,42 @@ export const PUT = withRoute(async (req: NextRequest) => {
 
   const body = updateSchema.parse(await req.json());
 
+  const consentChanged =
+    body.marketingEmailConsent !== undefined || body.marketingSmsConsent !== undefined;
+  const before = consentChanged
+    ? await prisma.customer.findUnique({
+        where: { id: session.customerId },
+        select: { marketingEmailConsent: true, marketingSmsConsent: true },
+      })
+    : null;
+
   const updated = await prisma.customer.update({
     where: { id: session.customerId },
-    data: body,
+    data: consentChanged ? { ...body, marketingConsentUpdatedAt: new Date() } : body,
   });
+
+  if (consentChanged && before) {
+    await auditLog({
+      tenantId: session.tenantId,
+      userId: null,
+      action: 'customer.consent_set',
+      resource: 'Customer',
+      resourceId: session.customerId,
+      before,
+      after: { marketingEmailConsent: updated.marketingEmailConsent, marketingSmsConsent: updated.marketingSmsConsent },
+      metadata: { source: 'account_settings' },
+      ipAddress: getClientIp(req),
+      userAgent: req.headers.get('user-agent'),
+    });
+  }
 
   return ok({
     id: updated.id,
     email: updated.email,
     firstName: updated.firstName,
     lastName: updated.lastName,
+    marketingEmailConsent: updated.marketingEmailConsent,
+    marketingSmsConsent: updated.marketingSmsConsent,
     phone: updated.phone,
   });
 });
