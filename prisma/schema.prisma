@@ -781,6 +781,11 @@ model Customer {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  marketingEmailConsent     Boolean   @default(false)
+  marketingSmsConsent       Boolean   @default(false)
+  marketingConsentUpdatedAt DateTime?
+  unsubscribeToken          String    @unique @default(uuid())
+
   tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   addresses      CustomerAddress[]
   carts          Cart[]
