@@ -166,7 +166,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Check session
+  // Check session. Re-runs on every navigation (not just first mount) because
+  // this layout persists across client-side route changes within /admin/* -
+  // including the login page itself - so it never naturally remounts after a
+  // logout/login cycle. Without depending on pathname here, the sidebar keeps
+  // showing whichever identity was loaded at the very first page view.
   useEffect(() => {
     fetch('/api/v1/auth/session', { credentials: 'include' })
       .then((r) => r.json())
@@ -176,12 +180,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           setPermissions(res.data.permissions ?? []);
           setCsrfToken(res.data.csrfToken ?? '');
         } else {
-          router.replace('/admin/login');
+          setUser(null);
+          setPermissions([]);
+          if (pathname !== '/admin/login') router.replace('/admin/login');
         }
       })
-      .catch(() => router.replace('/admin/login'))
+      .catch(() => {
+        setUser(null);
+        setPermissions([]);
+      })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, [router, pathname]);
 
   const hasPermission = useCallback(
     (perm: string) => {
@@ -204,6 +213,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         headers: { 'x-csrf-token': csrfToken || readCsrfCookie() },
       });
     } catch { /* ignore */ }
+    setUser(null);
+    setPermissions([]);
+    setCsrfToken('');
     router.replace('/admin/login');
   }, [router, csrfToken]);
 
