@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAdmin } from '@/lib/admin-auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Users, Search } from 'lucide-react';
+import { Loader2, Users, Search, Mail, MessageSquare } from 'lucide-react';
 
 interface Customer {
   id: string;
@@ -14,6 +14,8 @@ interface Customer {
   phone: string | null;
   status: string;
   createdAt: string;
+  marketingEmailConsent: boolean;
+  marketingSmsConsent: boolean;
   _count: { orders: number };
 }
 
@@ -60,7 +62,15 @@ export default function CustomersPage() {
           <h1 className="text-2xl font-bold">Customers</h1>
           <p className="text-muted-foreground text-sm">Manage registered customers</p>
         </div>
-        <Badge variant="secondary">{customers.length} total</Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary">{customers.length} total</Badge>
+          <Badge variant="outline" className="gap-1">
+            <Mail className="h-3 w-3" /> {customers.filter(c => c.marketingEmailConsent).length} opted in
+          </Badge>
+          <Badge variant="outline" className="gap-1">
+            <MessageSquare className="h-3 w-3" /> {customers.filter(c => c.marketingSmsConsent).length} opted in
+          </Badge>
+        </div>
       </div>
 
       <div className="relative max-w-sm">
@@ -98,6 +108,12 @@ export default function CustomersPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-muted-foreground">{c._count.orders} orders</span>
+                    <Mail className={`h-3.5 w-3.5 ${c.marketingEmailConsent ? 'text-emerald-500' : 'text-muted-foreground/30'}`}>
+                      <title>{c.marketingEmailConsent ? 'Opted in to marketing email' : 'Not opted in to marketing email'}</title>
+                    </Mail>
+                    <MessageSquare className={`h-3.5 w-3.5 ${c.marketingSmsConsent ? 'text-emerald-500' : 'text-muted-foreground/30'}`}>
+                      <title>{c.marketingSmsConsent ? 'Opted in to marketing SMS' : 'Not opted in to marketing SMS'}</title>
+                    </MessageSquare>
                     <Badge variant={c.status === 'ACTIVE' ? 'default' : 'destructive'} className="text-[10px]">
                       {c.status}
                     </Badge>
