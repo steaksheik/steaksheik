@@ -45,7 +45,7 @@ export default function CheckoutPage() {
     fetch('/api/v1/customers/session')
       .then(r => r.json())
       .then(json => {
-        if (json.success) {
+        if (json.success && json.data) {
           setCustomer(json.data);
           setForm(prev => ({
             ...prev,
