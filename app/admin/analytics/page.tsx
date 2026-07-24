@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 import { useAdmin } from '@/lib/admin-auth-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +14,9 @@ import {
   Package,
   Clock,
   RefreshCw,
+  Users,
+  Globe,
+  Settings2,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
@@ -31,6 +35,14 @@ const RechartsHourly = dynamic(
 );
 const RechartsPie = dynamic(
   () => import('./charts').then((m) => m.OrderTypePie),
+  { ssr: false, loading: () => <ChartSkeleton /> },
+);
+const RechartsVisitors = dynamic(
+  () => import('./charts').then((m) => m.VisitorsChart),
+  { ssr: false, loading: () => <ChartSkeleton /> },
+);
+const RechartsSources = dynamic(
+  () => import('./charts').then((m) => m.TrafficSourcesChart),
   { ssr: false, loading: () => <ChartSkeleton /> },
 );
 
@@ -72,12 +84,23 @@ interface OverviewData {
   kitchen: { avgPrepMinutes: number | null; avgTotalMinutes: number | null; completedOrders: number };
 }
 
+interface VisitorData {
+  configured: boolean;
+  error?: string;
+  totalVisitors?: number;
+  totalSessions?: number;
+  trend?: { date: string; visitors: number; sessions: number }[];
+  sources?: { channel: string; sessions: number; users: number }[];
+  countries?: { country: string; users: number }[];
+}
+
 export default function AnalyticsPage() {
   const { authHeaders, hasPermission } = useAdmin();
   const [overview, setOverview] = useState<OverviewData | null>(null);
   const [revenue, setRevenue] = useState<RevenueDataPoint[]>([]);
   const [products, setProducts] = useState<TopProduct[]>([]);
   const [hourly, setHourly] = useState<HourlyDist[]>([]);
+  const [visitors, setVisitors] = useState<VisitorData | null>(null);
   const [loading, setLoading] = useState(true);
   const [days, setDays] = useState(30);
 
@@ -87,10 +110,11 @@ export default function AnalyticsPage() {
       const hdrs = authHeaders();
       const opts = { credentials: 'include' as const, headers: hdrs };
 
-      const [oRes, rRes, pRes] = await Promise.all([
+      const [oRes, rRes, pRes, vRes] = await Promise.all([
         fetch('/api/v1/analytics', opts),
         fetch(`/api/v1/analytics/revenue?days=${days}`, opts),
         fetch('/api/v1/analytics/products?limit=10', opts),
+        fetch(`/api/v1/analytics/visitors?days=${days}`, opts),
       ]);
 
       if (oRes.ok) {
@@ -100,6 +124,10 @@ export default function AnalyticsPage() {
       if (rRes.ok) {
         const json = await rRes.json();
         setRevenue(json.data ?? []);
+      }
+      if (vRes.ok) {
+        const json = await vRes.json();
+        setVisitors(json.data ?? null);
       }
       if (pRes.ok) {
         const json = await pRes.json();
@@ -237,6 +265,129 @@ export default function AnalyticsPage() {
           <RechartsArea data={revenue} />
         </CardContent>
       </Card>
+
+      {/* Website Visitors (GA4) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-display font-semibold tracking-tight flex items-center gap-2">
+            <Users className="h-4.5 w-4.5" />
+            Website Visitors
+          </h2>
+          <Badge variant="secondary" className="text-xs">
+            Last {days} days
+          </Badge>
+        </div>
+
+        {!visitors?.configured ? (
+          <Card className="shadow-sm">
+            <CardContent className="flex flex-col items-center justify-center py-12 text-center gap-3">
+              <Globe className="h-8 w-8 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium">Visitor reports aren&apos;t connected yet</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                  Add a GA4 Property ID and Service Account JSON in Platform Services to see visitor counts and
+                  traffic sources here.
+                </p>
+              </div>
+              <Link href="/admin/services">
+                <Button size="sm" variant="outline">
+                  <Settings2 className="h-3.5 w-3.5 mr-1.5" />
+                  Go to Platform Services
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : visitors.error ? (
+          <Card className="shadow-sm">
+            <CardContent className="py-8 text-center">
+              <p className="text-sm text-red-600">{visitors.error}</p>
+              <p className="text-xs text-muted-foreground mt-1">Check the GA4 credentials in Platform Services.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Card className="shadow-sm">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sky-50 dark:bg-sky-950">
+                      <Users className="h-5 w-5 text-sky-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Visitors ({days}d)</p>
+                      <p className="text-xl font-bold">{(visitors.totalVisitors ?? 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="shadow-sm">
+                <CardContent className="pt-6">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-50 dark:bg-teal-950">
+                      <Globe className="h-5 w-5 text-teal-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Sessions ({days}d)</p>
+                      <p className="text-xl font-bold">{(visitors.totalSessions ?? 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="shadow-sm">
+              <CardHeader>
+                <CardTitle className="text-base">Visitors Trend</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RechartsVisitors data={visitors.trend ?? []} />
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base">Where Visitors Come From</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <RechartsSources data={visitors.sources ?? []} />
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base">Top Countries</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {!visitors.countries?.length ? (
+                    <div className="flex items-center justify-center h-[250px] text-sm text-muted-foreground">
+                      No data available yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {(() => {
+                        const max = Math.max(...(visitors.countries ?? []).map((c) => c.users), 1);
+                        return visitors.countries!.map((c) => (
+                          <div key={c.country} className="flex items-center gap-3">
+                            <span className="text-xs w-28 shrink-0 truncate">{c.country}</span>
+                            <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{ width: `${(c.users / max) * 100}%`, backgroundColor: '#c9a96e' }}
+                              />
+                            </div>
+                            <span className="text-xs font-medium w-10 text-right">{c.users}</span>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Two-column: Top Products + Order Type Split */}
       <div className="grid gap-6 lg:grid-cols-2">
