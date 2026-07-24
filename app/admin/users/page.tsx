@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, ShieldCheck, UserPlus, Pencil } from 'lucide-react';
+import { Loader2, Plus, ShieldCheck, UserPlus, Pencil, KeyRound, UserX, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RoleRef {
@@ -89,6 +89,7 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
 
   const canWriteUsers = hasPermission('identity:users:write');
+  const canDeleteUsers = hasPermission('identity:users:delete');
   const canWriteRoles = hasPermission('identity:roles:write');
 
   const load = useCallback(() => {
@@ -195,6 +196,76 @@ export default function UsersPage() {
     }
   };
 
+  // ── Deactivate / reactivate a user (soft delete — status flips to INACTIVE) ──
+  const [statusChanging, setStatusChanging] = useState(false);
+
+  const toggleUserStatus = async () => {
+    if (!manageUser) return;
+    const deactivating = manageUser.status === 'ACTIVE';
+    setStatusChanging(true);
+    try {
+      const res = deactivating
+        ? await fetch(`/api/v1/users/${manageUser.id}`, {
+            method: 'DELETE',
+            credentials: 'include',
+            headers: authHeaders(),
+          })
+        : await fetch(`/api/v1/users/${manageUser.id}`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'ACTIVE' }),
+          });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error?.message ?? 'Failed to update user status');
+        return;
+      }
+      const nextStatus = deactivating ? 'INACTIVE' : 'ACTIVE';
+      toast.success(deactivating ? 'User deactivated' : 'User reactivated');
+      setUsers((prev) => prev.map((u) => (u.id === manageUser.id ? { ...u, status: nextStatus } : u)));
+      setManageUser((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+    } catch {
+      toast.error('Network error updating user status');
+    } finally {
+      setStatusChanging(false);
+    }
+  };
+
+  // ── Admin-initiated password reset for the managed user ──
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+
+  const resetPassword = async () => {
+    if (!manageUser) return;
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      const res = await fetch(`/api/v1/users/${manageUser.id}/reset-password`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success(`Password reset. ${manageUser.firstName} will need to sign in again.`);
+        setResetPasswordOpen(false);
+        setNewPassword('');
+      } else {
+        toast.error(data.error?.message ?? 'Failed to reset password');
+      }
+    } catch {
+      toast.error('Network error while resetting password');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   // ── Add role ──
   const [addRoleOpen, setAddRoleOpen] = useState(false);
   const [roleForm, setRoleForm] = useState({ name: '', description: '' });
@@ -294,7 +365,14 @@ export default function UsersPage() {
                         {u.status}
                       </Badge>
                       {canWriteUsers && (
-                        <Button size="sm" variant="ghost" onClick={() => setManageUser(u)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setManageUser(u);
+                            setNewPassword('');
+                          }}
+                        >
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -441,13 +519,66 @@ export default function UsersPage() {
                 })}
                 {roles.length === 0 && <p className="text-xs text-muted-foreground">No roles yet.</p>}
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex-wrap gap-2 sm:justify-between">
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setResetPasswordOpen(true)}>
+                    <KeyRound className="h-3.5 w-3.5 mr-1.5" />
+                    Reset Password
+                  </Button>
+                  {canDeleteUsers && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className={manageUser.status === 'ACTIVE' ? 'text-destructive hover:text-destructive' : ''}
+                      onClick={toggleUserStatus}
+                      disabled={statusChanging}
+                    >
+                      {statusChanging ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : manageUser.status === 'ACTIVE' ? (
+                        <UserX className="h-3.5 w-3.5 mr-1.5" />
+                      ) : (
+                        <UserCheck className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      {manageUser.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
+                    </Button>
+                  )}
+                </div>
                 <Button variant="outline" onClick={() => setManageUser(null)}>
                   Done
                 </Button>
               </DialogFooter>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset password dialog */}
+      <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Reset Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {manageUser?.firstName} {manageUser?.lastName}. They'll be signed out of any
+              active sessions and need to sign in again with it.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-1.5 py-2">
+            <Label className="text-xs">New Password</Label>
+            <Input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="Min. 8 characters"
+              autoComplete="new-password"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={resetPassword} disabled={resettingPassword}>
+              {resettingPassword && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
+              Set New Password
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
