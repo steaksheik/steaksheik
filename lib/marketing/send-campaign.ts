@@ -1,5 +1,87 @@
-
+import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[0-9()\s-]{6,20}$/;
+
+export interface ExtraRecipient {
+  email?: string;
+  phone?: string;
+  unsubscribeToken: string;
+}
+
+export interface ExtraRecipientResolution {
+  ready: ExtraRecipient[];
+  suppressed: string[];
+  invalid: string[];
+}
+
+/**
+ * Resolve a pasted/uploaded list of ad-hoc emails or phone numbers for a
+ * single campaign send. These people are deliberately NOT saved as visible
+ * customers (contactSource 'campaign_oneoff') and are never auto-included in
+ * a future campaign's audience — but we still create a minimal, hidden
+ * record so a reply of STOP or a click on "unsubscribe" is honoured forever.
+ * Anyone who already has an explicit opt-out on file (from any source) is
+ * suppressed here rather than re-contacted — an ad-hoc paste can never
+ * override a previous unsubscribe.
+ */
+export async function resolveExtraRecipients(
+  tenantId: string,
+  channel: 'EMAIL' | 'SMS',
+  raw: string[],
+): Promise<ExtraRecipientResolution> {
+  const invalid: string[] = [];
+  const cleaned = new Set<string>();
+  for (const entry of raw) {
+    const v = entry.trim();
+    if (!v) continue;
+    if (channel === 'EMAIL') {
+      const lower = v.toLowerCase();
+      if (!EMAIL_RE.test(lower)) { invalid.push(v); continue; }
+      cleaned.add(lower);
+    } else {
+      if (!PHONE_RE.test(v)) { invalid.push(v); continue; }
+      cleaned.add(v);
+    }
+  }
+  if (cleaned.size === 0) return { ready: [], suppressed: [], invalid };
+
+  const list = Array.from(cleaned);
+  const existing = await prisma.customer.findMany({
+    where: channel === 'EMAIL' ? { tenantId, email: { in: list } } : { tenantId, phone: { in: list } },
+    select: { email: true, phone: true, marketingEmailConsent: true, marketingSmsConsent: true, unsubscribeToken: true },
+  });
+  const existingByKey = new Map(existing.map((c) => [channel === 'EMAIL' ? c.email! : c.phone!, c]));
+
+  const ready: ExtraRecipient[] = [];
+  const suppressed: string[] = [];
+
+  for (const key of list) {
+    const match = existingByKey.get(key);
+    if (match) {
+      const consented = channel === 'EMAIL' ? match.marketingEmailConsent : match.marketingSmsConsent;
+      if (!consented) { suppressed.push(key); continue; }
+      ready.push(channel === 'EMAIL' ? { email: key, unsubscribeToken: match.unsubscribeToken } : { phone: key, unsubscribeToken: match.unsubscribeToken });
+      continue;
+    }
+    const created = await prisma.customer.create({
+      data: {
+        tenantId,
+        email: channel === 'EMAIL' ? key : null,
+        phone: channel === 'SMS' ? key : null,
+        contactSource: 'campaign_oneoff',
+        marketingEmailConsent: channel === 'EMAIL',
+        marketingSmsConsent: channel === 'SMS',
+        marketingConsentUpdatedAt: new Date(),
+      },
+      select: { unsubscribeToken: true },
+    });
+    ready.push(channel === 'EMAIL' ? { email: key, unsubscribeToken: created.unsubscribeToken } : { phone: key, unsubscribeToken: created.unsubscribeToken });
+  }
+
+  return { ready, suppressed, invalid };
+}
 
 interface ConfiguredAdapter<TSend> {
   isFallback: boolean;
@@ -57,6 +139,8 @@ export async function sendEmailCampaign(params: {
   recipients: { email: string; firstName: string | null; unsubscribeToken: string }[];
   subject: string;
   bodyHtml: string;
+  /** Optional flyer/promo image URL (already uploaded to storage) shown above the message body. */
+  flyerUrl?: string;
   siteOrigin: string;
 }): Promise<EmailSendResult> {
   const adapter = await getConfiguredAdapter<
@@ -66,11 +150,16 @@ export async function sendEmailCampaign(params: {
 
   const { emailWrapper } = await import('@/lib/notifications/email-service');
 
+  const flyerHtml = params.flyerUrl
+    ? `<img src="${params.flyerUrl}" alt="" style="display:block;width:100%;max-width:536px;height:auto;border-radius:8px;margin:0 0 20px;" />`
+    : '';
+
   let sent = 0;
   let failed = 0;
   await runBatched(params.recipients, 8, async (r) => {
     const unsubscribeUrl = `${params.siteOrigin}/unsubscribe?token=${r.unsubscribeToken}&channel=email`;
     const html = emailWrapper(`
+      ${flyerHtml}
       ${params.bodyHtml}
       <p style="color:#999;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
         You're receiving this because you opted in to marketing emails from The Steak Sheikh.
