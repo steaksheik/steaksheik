@@ -108,7 +108,40 @@ export async function getCategories(tenantId: string) {
     include: { _count: { select: { products: { where: { status: 'PUBLISHED' } } } } },
   });
 }
+export interface FeaturedSectionConfig {
+  enabled: boolean;
+  title: string;
+  subtitle: string | null;
+  limit: number;
+}
 
+const DEFAULT_FEATURED_SECTION: FeaturedSectionConfig = {
+  enabled: true,
+  title: 'Our Most Loved Steaks',
+  subtitle: null,
+  limit: 5,
+};
+
+/**
+ * Fetch the homepage "Featured Products" section config (HomepageSection
+ * type=FEATURED_PRODUCTS). Falls back to sane defaults — matching what the
+ * storefront looked like before this was configurable — when nothing has
+ * been saved yet, so the section always renders something sensible.
+ */
+export async function getFeaturedSectionConfig(tenantId: string): Promise<FeaturedSectionConfig> {
+  const section = await prisma.homepageSection.findUnique({
+    where: { tenantId_type: { tenantId, type: 'FEATURED_PRODUCTS' } },
+  });
+  if (!section) return DEFAULT_FEATURED_SECTION;
+
+  const c = (section.content ?? {}) as Record<string, unknown>;
+  return {
+    enabled: section.isVisible,
+    title: section.title?.trim() || DEFAULT_FEATURED_SECTION.title,
+    subtitle: section.subtitle ?? null,
+    limit: typeof c.limit === 'number' && c.limit >= 2 && c.limit <= 10 ? c.limit : DEFAULT_FEATURED_SECTION.limit,
+  };
+}
 /** Fetch featured published products. */
 export async function getFeaturedProducts(tenantId: string, limit = 6) {
   return prisma.product.findMany({
