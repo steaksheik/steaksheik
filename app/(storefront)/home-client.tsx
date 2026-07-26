@@ -133,11 +133,15 @@ function HeroBackground({ hero }: { hero: HeroConfig | null }) {
 
 export function HomeClient({
   brandName,
-  steaks,
+  featured,
+  featuredTitle = 'Our Most Loved Steaks',
+  featuredSubtitle = null,
   hero = null,
 }: {
   brandName: string;
-  steaks: StoreProduct[];
+  featured: StoreProduct[];
+  featuredTitle?: string;
+  featuredSubtitle?: string | null;
   hero?: HeroConfig | null;
 }) {
   const soon = (label: string) => toast.info(`${label} — coming soon`);
@@ -281,12 +285,13 @@ export function HomeClient({
         </div>
       </section>
 
-      {/* ══ MOST LOVED STEAKS ══ */}
-      {steaks.length > 0 && (
+            {/* ══ FEATURED PRODUCTS ══ */}
+      {featured.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-          <h2 className="font-heading text-2xl font-extrabold">OUR MOST LOVED STEAKS</h2>
+          <h2 className="font-heading text-2xl font-extrabold">{featuredTitle.toUpperCase()}</h2>
+          {featuredSubtitle && <p className="mt-1 text-sm text-neutral-500">{featuredSubtitle}</p>}
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {steaks.slice(0, 5).map((p) => (
+            {featured.map((p) => (
               <div key={p.id} className="group overflow-hidden rounded-xl bg-[#0a0a0a] text-white">
                 <Link href={`/product/${p.slug}`} className="block relative aspect-square overflow-hidden bg-neutral-900">
                   {p.imageUrl ? (
