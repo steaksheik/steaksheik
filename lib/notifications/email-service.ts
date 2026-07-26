@@ -133,7 +133,7 @@ export async function sendNotificationEmail(opts: SendEmailOpts): Promise<boolea
 
 // ── Email Templates ──────────────────────────────────────
 
-function emailWrapper(content: string): string {
+export function emailWrapper(content: string): string {
   return `
     <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: #0a0a0a; padding: 24px 32px; text-align: center;">
