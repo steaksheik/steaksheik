@@ -28,7 +28,7 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
 const MAX_VIDEO_BYTES = 60 * 1024 * 1024; // 60 MB
 
 // Only these destination folders are permitted (prevents arbitrary key paths).
-const ALLOWED_FOLDERS = new Set(['hero', 'branding', 'products', 'categories', 'media']);
+const ALLOWED_FOLDERS = new Set(['hero', 'branding', 'products', 'categories', 'media', 'marketing']);
 
 function slug(name: string): string {
   return name
