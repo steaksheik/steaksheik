@@ -25,6 +25,7 @@ import {
   Clapperboard,
   ArrowUp,
   ArrowDown,
+  Star,
 } from 'lucide-react';
 
 interface Brand {
