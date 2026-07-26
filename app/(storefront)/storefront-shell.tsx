@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { useCart } from '@/lib/cart-context';
 import { useCustomer } from '@/lib/customer-context';
+import { usePwaInstall } from '@/hooks/use-pwa-install';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Menu,
   X,
@@ -18,6 +20,9 @@ import {
   Music2,
   Apple,
   Play,
+  Share,
+  SquarePlus,
+  Check,
 } from 'lucide-react';
 
 interface BrandInfo {
@@ -48,12 +53,43 @@ export function StorefrontShell({
   categories: NavCategory[];
   children: React.ReactNode;
 }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+    const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [iosInstallOpen, setIosInstallOpen] = useState(false);
   const name = (brand?.name ?? 'The Steak Sheikh').toUpperCase();
   const accent = brand?.theme?.accentColor ?? ACCENT;
+  const pwaInstall = usePwaInstall();
 
   const soon = (label: string) => toast.info(`${label} -- coming soon`);
+
+  async function handleAppStoreClick() {
+    // No native iOS app exists — this is the PWA install path. iOS Safari has
+    // no programmatic install prompt, so guide the user through the manual
+    // "Share -> Add to Home Screen" flow instead.
+    if (pwaInstall.isIOS) {
+      setIosInstallOpen(true);
+      return;
+    }
+    if (pwaInstall.canPrompt) {
+      const outcome = await pwaInstall.promptInstall();
+      if (outcome === 'accepted') toast.success('App installed!');
+      return;
+    }
+    toast.info(pwaInstall.installed ? 'Already installed' : 'Open this site in Safari on your iPhone/iPad to install it');
+  }
+
+  async function handleGooglePlayClick() {
+    if (pwaInstall.canPrompt) {
+      const outcome = await pwaInstall.promptInstall();
+      if (outcome === 'accepted') toast.success('App installed!');
+      return;
+    }
+    if (pwaInstall.installed) {
+      toast.info('Already installed');
+      return;
+    }
+    toast.info('Use your browser menu and choose "Install app" or "Add to Home screen"');
+  }
 
   const Logo = (
     <Link href="/" className="flex items-center gap-2.5 group">
@@ -255,15 +291,24 @@ export function StorefrontShell({
                 <li><a href="tel:+441234567890" className="hover:text-white transition-colors">0123 456 7890</a></li>
                 <li>9:00 &ndash; 23:00 Daily</li>
               </ul>
-              <div className="mt-4 flex flex-col gap-2">
-                <button onClick={() => soon('iOS app')} className="inline-flex w-[140px] items-center gap-2 rounded-md border border-white/15 bg-black px-3 py-1.5 text-white hover:bg-white/5 transition-colors">
-                  <Apple className="h-5 w-5" />
-                  <span className="leading-none text-left"><span className="block text-[8px] text-white/60">Download on the</span><span className="block text-[12px] font-semibold">App Store</span></span>
-                </button>
-                <button onClick={() => soon('Android app')} className="inline-flex w-[140px] items-center gap-2 rounded-md border border-white/15 bg-black px-3 py-1.5 text-white hover:bg-white/5 transition-colors">
-                  <Play className="h-4 w-4" />
-                  <span className="leading-none text-left"><span className="block text-[8px] text-white/60">Get it on</span><span className="block text-[12px] font-semibold">Google Play</span></span>
-                </button>
+                           <div className="mt-4 flex flex-col gap-2">
+                {pwaInstall.installed ? (
+                  <div className="inline-flex w-[140px] items-center gap-2 rounded-md border border-white/15 bg-black px-3 py-1.5 text-white/70">
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    <span className="text-[11px]">App installed</span>
+                  </div>
+                ) : (
+                  <>
+                    <button onClick={handleAppStoreClick} className="inline-flex w-[140px] items-center gap-2 rounded-md border border-white/15 bg-black px-3 py-1.5 text-white hover:bg-white/5 transition-colors">
+                      <Apple className="h-5 w-5" />
+                      <span className="leading-none text-left"><span className="block text-[8px] text-white/60">Install for</span><span className="block text-[12px] font-semibold">iPhone</span></span>
+                    </button>
+                    <button onClick={handleGooglePlayClick} className="inline-flex w-[140px] items-center gap-2 rounded-md border border-white/15 bg-black px-3 py-1.5 text-white hover:bg-white/5 transition-colors">
+                      <Play className="h-4 w-4" />
+                      <span className="leading-none text-left"><span className="block text-[8px] text-white/60">Install for</span><span className="block text-[12px] font-semibold">Android</span></span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -271,8 +316,32 @@ export function StorefrontShell({
           <div className="mt-12 pt-6 border-t border-white/10 text-center text-xs text-white/30">
             &copy; {new Date().getFullYear()} {brand?.name ?? 'The Steak Sheikh'}. All rights reserved.
           </div>
-        </div>
+               </div>
       </footer>
+
+      {/* iOS has no programmatic install prompt — walk the user through it manually. */}
+      <Dialog open={iosInstallOpen} onOpenChange={setIosInstallOpen}>
+        <DialogContent className="max-w-sm bg-[#0a0a0a] border-white/10 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Install on your iPhone</DialogTitle>
+          </DialogHeader>
+          <ol className="space-y-4 text-sm text-white/70 py-2">
+            <li className="flex items-center gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">1</span>
+              <span className="flex items-center gap-1.5">Tap the Share button <Share className="h-4 w-4 inline text-white" /> in Safari's toolbar</span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">2</span>
+              <span className="flex items-center gap-1.5">Scroll down and tap <SquarePlus className="h-4 w-4 inline text-white" /> <span className="font-medium text-white">Add to Home Screen</span></span>
+            </li>
+            <li className="flex items-center gap-3">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-xs font-bold text-white">3</span>
+              <span>Tap <span className="font-medium text-white">Add</span> — the app icon appears on your home screen</span>
+            </li>
+          </ol>
+          <p className="text-[11px] text-white/40">Must be opened in Safari (not the Chrome or Facebook in-app browser) for this option to appear.</p>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
