@@ -65,8 +65,8 @@ export const POST = withRoute(async (req: NextRequest) => {
   });
 
   // Send welcome email (fire-and-forget)
-  sendWelcomeEmail({
-    email: customer.email,
+    sendWelcomeEmail({
+    email: body.email.toLowerCase(),
     firstName: customer.firstName ?? 'there',
   }).catch(() => {});
 
