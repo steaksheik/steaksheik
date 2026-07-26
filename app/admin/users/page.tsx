@@ -72,6 +72,7 @@ const ROLE_PRESETS: { name: string; description: string; keys: string[] }[] = [
       'theme_content:navigation:read', 'theme_content:navigation:write', 'theme_content:seo:read',
       'theme_content:seo:write', 'theme_content:contact:read', 'theme_content:contact:write',
       'analytics:dashboard:read', 'analytics:reports:read', 'notifications:settings:read',
+      'notifications:settings:write',
     ],
   },
   {
