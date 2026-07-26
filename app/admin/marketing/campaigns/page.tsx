@@ -1,1 +1,265 @@
 
+'use client';
+
+import { useCallback, useEffect, useState } from 'react';
+import { toast } from 'sonner';
+import { useAdmin } from '@/lib/admin-auth-context';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Mail, MessageSquare, Send, Loader2, Users } from 'lucide-react';
+
+interface Audience {
+  emailConsented: number;
+  smsConsented: number;
+  totalCustomers: number;
+}
+
+interface CampaignHistoryRow {
+  id: string;
+  createdAt: string;
+  sentBy: string | null;
+  channel: 'EMAIL' | 'SMS';
+  subject: string | null;
+  preview: string;
+  audienceSize: number;
+  sent: number;
+  failed: number;
+}
+
+function fmtDate(d: string) {
+  return new Date(d).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+export default function CampaignsPage() {
+  const { authHeaders, hasPermission } = useAdmin();
+  const canSend = hasPermission('notifications:settings:write');
+  const canView = hasPermission('notifications:settings:read');
+
+  const [audience, setAudience] = useState<Audience | null>(null);
+  const [history, setHistory] = useState<CampaignHistoryRow[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  const [channel, setChannel] = useState<'EMAIL' | 'SMS'>('EMAIL');
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [testAddress, setTestAddress] = useState('');
+  const [sendingTest, setSendingTest] = useState(false);
+  const [sendingLive, setSendingLive] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const load = useCallback(() => {
+    fetch('/api/v1/marketing/audience', { credentials: 'include', headers: authHeaders() })
+      .then((r) => r.json())
+      .then((json) => setAudience(json.data ?? null))
+      .catch(() => {});
+    setLoadingHistory(true);
+    fetch('/api/v1/marketing/campaigns', { credentials: 'include', headers: authHeaders() })
+      .then((r) => r.json())
+      .then((json) => setHistory(json.data?.campaigns ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingHistory(false));
+  }, [authHeaders]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const audienceCount = channel === 'EMAIL' ? audience?.emailConsented ?? 0 : audience?.smsConsented ?? 0;
+  const canSubmit = message.trim().length > 0 && (channel === 'SMS' || subject.trim().length > 0);
+
+  const sendTest = async () => {
+    if (!testAddress.trim()) return toast.error(channel === 'EMAIL' ? 'Enter a test email address' : 'Enter a test phone number');
+    if (!canSubmit) return toast.error('Write a message first');
+    setSendingTest(true);
+    try {
+      const res = await fetch('/api/v1/marketing/campaigns', {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          channel,
+          subject: channel === 'EMAIL' ? subject : undefined,
+          message,
+          test: channel === 'EMAIL' ? { email: testAddress } : { phone: testAddress },
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message);
+      toast.success('Test sent — check the inbox/phone');
+    } catch (e) {
+      toast.error((e as Error).message || 'Test send failed');
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const sendLive = async () => {
+    setConfirmOpen(false);
+    setSendingLive(true);
+    try {
+      const res = await fetch('/api/v1/marketing/campaigns', {
+        method: 'POST',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({ channel, subject: channel === 'EMAIL' ? subject : undefined, message }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message);
+      toast.success(`Sent to ${json.data.sent} of ${json.data.audienceSize} recipient${json.data.audienceSize === 1 ? '' : 's'}${json.data.failed ? ` (${json.data.failed} failed)` : ''}`);
+      setSubject('');
+      setMessage('');
+      load();
+    } catch (e) {
+      toast.error((e as Error).message || 'Send failed');
+    } finally {
+      setSendingLive(false);
+    }
+  };
+
+  if (!canView) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">You don&apos;t have permission to view marketing campaigns.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-display font-bold tracking-tight">Campaigns</h1>
+        <p className="text-muted-foreground mt-1">
+          Send an email or text message to customers who&apos;ve opted in to marketing — everyone else is automatically excluded.
+        </p>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        <Card className="shadow-sm lg:col-span-3">
+          <CardHeader>
+            <CardTitle className="text-base">Compose</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Tabs value={channel} onValueChange={(v) => setChannel(v as 'EMAIL' | 'SMS')}>
+              <TabsList>
+                <TabsTrigger value="EMAIL"><Mail className="h-3.5 w-3.5 mr-1.5" />Email</TabsTrigger>
+                <TabsTrigger value="SMS"><MessageSquare className="h-3.5 w-3.5 mr-1.5" />SMS</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="EMAIL" className="space-y-3 pt-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Subject</Label>
+                  <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="This weekend only: 20% off" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Message</Label>
+                  <Textarea rows={8} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Write your email — line breaks become paragraphs. An unsubscribe link is added automatically." />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="SMS" className="space-y-3 pt-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Message</Label>
+                  <Textarea rows={4} maxLength={480} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="20% off this weekend at The Steak Sheikh — order at thesteaksheikh.com" />
+                  <p className="text-[11px] text-muted-foreground">{message.length}/480 — &quot;Reply STOP to opt out&quot; is added automatically.</p>
+                </div>
+              </TabsContent>
+            </Tabs>
+
+            <div className="rounded-md bg-muted/60 p-3 flex items-center gap-2 text-xs text-muted-foreground">
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              {audience ? (
+                <span>
+                  This will send to <span className="font-semibold text-foreground">{audienceCount}</span> customer{audienceCount === 1 ? '' : 's'} who opted in to marketing {channel === 'EMAIL' ? 'emails' : 'texts'}.
+                </span>
+              ) : (
+                <span>Loading audience…</span>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-2 pt-2">
+              <div className="flex-1 flex gap-2">
+                <Input
+                  value={testAddress}
+                  onChange={(e) => setTestAddress(e.target.value)}
+                  placeholder={channel === 'EMAIL' ? 'you@example.com' : '+447…'}
+                  className="flex-1"
+                />
+                <Button variant="outline" disabled={!canSend || sendingTest} onClick={sendTest}>
+                  {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send test'}
+                </Button>
+              </div>
+              <Button disabled={!canSend || !canSubmit || sendingLive || audienceCount === 0} onClick={() => setConfirmOpen(true)}>
+                {sendingLive ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Send className="h-4 w-4 mr-1.5" />}
+                Send to {audienceCount}
+              </Button>
+            </div>
+            {!canSend && (
+              <p className="text-[11px] text-muted-foreground">You can view campaigns but don&apos;t have permission to send them.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Recent sends</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {loadingHistory ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : history.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No campaigns sent yet.</p>
+            ) : (
+              history.map((h) => (
+                <div key={h.id} className="rounded-md border border-border/60 p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <Badge variant="secondary" className="text-[10px]">
+                      {h.channel === 'EMAIL' ? <Mail className="h-3 w-3 mr-1" /> : <MessageSquare className="h-3 w-3 mr-1" />}
+                      {h.channel}
+                    </Badge>
+                    <span className="text-[11px] text-muted-foreground">{fmtDate(h.createdAt)}</span>
+                  </div>
+                  {h.subject && <p className="text-sm font-medium truncate">{h.subject}</p>}
+                  <p className="text-xs text-muted-foreground truncate">{h.preview}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {h.sent}/{h.audienceSize} delivered{h.failed ? `, ${h.failed} failed` : ''}
+                    {h.sentBy ? ` — ${h.sentBy}` : ''}
+                  </p>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Send this {channel === 'EMAIL' ? 'email' : 'text'} now?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will immediately message {audienceCount} customer{audienceCount === 1 ? '' : 's'} who opted in to marketing {channel === 'EMAIL' ? 'emails' : 'texts'}. This can&apos;t be undone or recalled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={sendLive}>Send now</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
