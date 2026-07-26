@@ -83,6 +83,8 @@ export interface IStorageAdapter extends IPluginAdapter {
   ): Promise<StorageUploadResult>;
   getSignedUrl(key: string, expiresIn?: number): Promise<string>;
   getPublicUrl(key: string): string;
+  /** Optional — remove an object from storage. Callers should treat a missing implementation as a no-op. */
+  delete?(key: string): Promise<{ success: boolean; error?: string }>;
 }
 
 export interface PaymentIntentResult {
