@@ -58,3 +58,34 @@ export const POST = withRoute(async (req: NextRequest, { params }) => {
 
   return ok({ image }, { status: 201 });
 });
+
+const setPrimarySchema = z.object({
+  url: z.string().url(),
+  altText: z.string().max(500).optional().nullable(),
+});
+
+/**
+ * PUT /api/v1/catalogue/products/:id/images — set the primary image, updating
+ * it in place if one already exists rather than adding a second row (which
+ * would leave sortOrder ties deciding which image actually shows first).
+ */
+export const PUT = withRoute(async (req: NextRequest, { params }) => {
+  const ctx = await requirePermission(req, 'catalogue:products:write');
+  const productId = getId(params);
+  const body = setPrimarySchema.parse(await req.json().catch(() => ({})));
+
+  const product = await prisma.product.findFirst({ where: { id: productId, tenantId: ctx.tenantId } });
+  if (!product) throw Errors.notFound('Product not found');
+
+  const existingPrimary = await prisma.productImage.findFirst({ where: { productId, isPrimary: true } });
+  const image = existingPrimary
+    ? await prisma.productImage.update({
+        where: { id: existingPrimary.id },
+        data: { url: body.url, altText: body.altText ?? existingPrimary.altText },
+      })
+    : await prisma.productImage.create({
+        data: { productId, url: body.url, altText: body.altText, isPrimary: true, sortOrder: 0 },
+      });
+
+  return ok({ image });
+});
