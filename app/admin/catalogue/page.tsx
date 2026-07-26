@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
+import { MediaPicker } from '@/components/admin/media-picker';
 import {
   Plus,
   Loader2,
@@ -243,13 +244,14 @@ export default function CataloguePage() {
         credentials: 'include', headers: authHeaders(),
         body: JSON.stringify(payload),
       });
-      const data = await res.json();
+           const data = await res.json();
       if (data.success) {
-        // Add image if provided and it's a new product
-        if (prodImageUrl && !editingProd && data.data?.product?.id) {
-          await fetch(`/api/v1/catalogue/products/${data.data.product.id}/images`, {
-            method: 'POST', credentials: 'include', headers: authHeaders(),
-            body: JSON.stringify({ url: prodImageUrl, altText: prodName, isPrimary: true }),
+        const productId = editingProd?.id ?? data.data?.product?.id;
+        const previousImageUrl = editingProd?.images?.[0]?.url ?? '';
+        if (productId && prodImageUrl && prodImageUrl !== previousImageUrl) {
+          await fetch(`/api/v1/catalogue/products/${productId}/images`, {
+            method: 'PUT', credentials: 'include', headers: authHeaders(),
+            body: JSON.stringify({ url: prodImageUrl, altText: prodName }),
           }).catch(() => {});
         }
         toast.success(editingProd ? 'Product updated' : 'Product created');
@@ -461,8 +463,8 @@ export default function CataloguePage() {
               <Textarea value={catDesc} onChange={(e) => setCatDesc(e.target.value)} rows={2} />
             </div>
             <div className="space-y-2">
-              <Label>Image URL</Label>
-              <Input value={catImage} onChange={(e) => setCatImage(e.target.value)} placeholder="https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/Cat_August_2010-4.jpg/1280px-Cat_August_2010-4.jpg" />
+              <Label>Image</Label>
+              <MediaPicker value={catImage} onChange={setCatImage} folder="categories" />
             </div>
             <div className="space-y-2">
               <Label>Status</Label>
@@ -537,13 +539,8 @@ export default function CataloguePage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Image URL</Label>
-              <Input value={prodImageUrl} onChange={(e) => setProdImageUrl(e.target.value)} placeholder="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Digital_video_resolutions_%28VCD_to_4K%29.svg/500px-Digital_video_resolutions_%28VCD_to_4K%29.svg.png" />
-              {prodImageUrl && (
-                <div className="mt-1 aspect-video max-w-[200px] rounded-md overflow-hidden bg-muted">
-                  <img src={prodImageUrl} alt="Preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                </div>
-              )}
+              <Label>Image</Label>
+              <MediaPicker value={prodImageUrl} onChange={setProdImageUrl} folder="products" />
             </div>
 
             <Separator />
