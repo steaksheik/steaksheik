@@ -4,6 +4,7 @@ import { ok } from '@/lib/api/response';
 import { requirePermission } from '@/lib/auth/context';
 import { getConfiguredStorage } from '@/lib/plugins/storage';
 import { auditLog } from '@/lib/audit/service';
+import { prisma } from '@/lib/db';
 import { Errors } from '@/lib/api/errors';
 import crypto from 'crypto';
 
@@ -44,7 +45,8 @@ function slug(name: string): string {
  *   field `file`   (required): the image or video blob
  *   field `folder` (optional): one of hero|branding|products|categories|media
  *
- * Streams the file to the configured S3 bucket and returns { url, key }.
+ * Streams the file to the configured S3 bucket, records it in the media
+ * library, and returns { url, key }.
  */
 export const POST = withRoute(
   async (req: NextRequest) => {
@@ -96,6 +98,20 @@ export const POST = withRoute(
     }
 
     const url = result.url ?? storage.getPublicUrl(result.key);
+    const kind = isVideo ? 'video' : 'image';
+
+    const asset = await prisma.mediaAsset.create({
+      data: {
+        tenantId: ctx.tenantId,
+        key: result.key,
+        url,
+        mimeType: mime,
+        fileSize: size,
+        folder,
+        kind,
+        uploadedById: ctx.session.userId,
+      },
+    });
 
     await auditLog({
       tenantId: ctx.tenantId,
@@ -109,7 +125,7 @@ export const POST = withRoute(
     });
 
     return ok(
-      { url, key: result.key, mimeType: mime, fileSize: size, kind: isVideo ? 'video' : 'image' },
+      { id: asset.id, url, key: result.key, mimeType: mime, fileSize: size, folder, kind },
       { status: 201 },
     );
   },
