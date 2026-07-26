@@ -21,8 +21,9 @@ import {
   Server,
     ChefHat,
   BarChart3,
-  Bell,
+Bell,
   QrCode,
+  Send,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
