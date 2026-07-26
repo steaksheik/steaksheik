@@ -22,8 +22,9 @@ import {
     ChefHat,
   BarChart3,
 Bell,
-  QrCode,
+    QrCode,
   Send,
+  Images,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -42,7 +43,8 @@ const NAV_ITEMS = [
   { label: 'Catalogue', href: '/admin/catalogue', icon: Package, permission: 'catalogue:categories:read' },
   { label: 'Customers', href: '/admin/customers', icon: Users, permission: null },
   { label: 'Notifications', href: '/admin/notifications', icon: Bell, permission: 'notifications:settings:read' },
-    { label: 'Branding', href: '/admin/branding', icon: Palette, permission: 'branding:brand:read' },
+      { label: 'Branding', href: '/admin/branding', icon: Palette, permission: 'branding:brand:read' },
+  { label: 'Media Library', href: '/admin/media', icon: Images, permission: 'branding:assets:write' },
     { label: 'QR Codes', href: '/admin/marketing/qr-codes', icon: QrCode, permission: 'branding:assets:write' },
   { label: 'Campaigns', href: '/admin/marketing/campaigns', icon: Send, permission: 'notifications:settings:read' },
   { label: 'Platform Services', href: '/admin/services', icon: Server, permission: 'services:platform:read' },
