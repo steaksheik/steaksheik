@@ -46,10 +46,11 @@ model Tenant {
   seoSettings          SeoSettings?
   contactInfo          ContactInfo?
   socialLinks          SocialLink[]
-  customers            Customer[]
+   customers            Customer[]
   carts                Cart[]
   orders               Order[]
   loyaltyAccounts      LoyaltyAccount[]
+  mediaAssets          MediaAsset[]
 
   @@map("tenants")
 }
@@ -185,10 +186,11 @@ model User {
   createdBy     String?
   updatedBy     String?
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userRoles UserRole[]
-  sessions  Session[]
-  auditLogs AuditLog[]
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles   UserRole[]
+  sessions    Session[]
+  auditLogs   AuditLog[]
+  mediaAssets MediaAsset[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -306,7 +308,29 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@map("audit_logs")
 }
+// Every file uploaded through /api/v1/media/upload, regardless of where it
+// ends up being used (product/category image, campaign flyer, branding
+// asset, QR flyer...) — backs the admin Media Library gallery so a
+// previously-uploaded image can be found and reused instead of re-uploaded.
+model MediaAsset {
+  id           String   @id @default(uuid())
+  tenantId     String
+  key          String
+  url          String
+  mimeType     String
+  fileSize     Int
+  folder       String
+  kind         String
+  uploadedById String?
+  createdAt    DateTime @default(now())
 
+  tenant     Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploadedBy User?  @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, createdAt])
+  @@index([tenantId, folder])
+  @@map("media_assets")
+}
 // ═══════════════════════════════════════════════
 // FEATURE FLAGS
 // ═══════════════════════════════════════════════
