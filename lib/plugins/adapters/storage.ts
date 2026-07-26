@@ -108,6 +108,18 @@ export class S3StorageAdapter extends BaseAdapter implements IStorageAdapter {
     }
   }
 
+    /** Remove an object from the bucket — used when a media library asset is deleted. */
+  async delete(key: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { client, settings } = await this.makeClient();
+      const { DeleteObjectCommand } = await import('@aws-sdk/client-s3');
+      await client.send(new DeleteObjectCommand({ Bucket: settings.bucketName, Key: key }));
+      return { success: true };
+    } catch (err) {
+      return { success: false, error: (err as Error).message };
+    }
+  }
+
   /**
    * REAL connectivity test: verifies the bucket exists, the region/keys are
    * valid, and that we can write + delete (upload permission). Returns a
