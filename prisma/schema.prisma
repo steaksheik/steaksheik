@@ -772,7 +772,7 @@ model ProductImage {
 model Customer {
   id            String         @id @default(uuid())
   tenantId      String
-  email         String
+  email         String?
   passwordHash  String?
   firstName     String?
   lastName      String?
@@ -781,10 +781,21 @@ model Customer {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
+  // Marketing consent (PECR/GDPR) — explicit opt-in per channel, never
+  // inferred from transactional activity. unsubscribeToken lets a marketing
+  // email/SMS carry a one-click opt-out link/reply that works without login.
   marketingEmailConsent     Boolean   @default(false)
   marketingSmsConsent       Boolean   @default(false)
   marketingConsentUpdatedAt DateTime?
   unsubscribeToken          String    @unique @default(uuid())
+
+  // Where this record came from — self-registered customers vs. contacts an
+  // admin added for marketing purposes with offline/pre-existing consent
+  // (e.g. a paper sign-up sheet or an imported mailing list). email is
+  // nullable specifically so an SMS-only imported contact isn't forced to
+  // have one; Postgres unique indexes treat multiple NULLs as distinct so
+  // @@unique([tenantId, email]) still holds.
+  contactSource String @default("registered")
 
   tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   addresses      CustomerAddress[]
@@ -796,7 +807,6 @@ model Customer {
   @@index([tenantId])
   @@map("customers")
 }
-
 enum CustomerStatus {
   ACTIVE
   INACTIVE
