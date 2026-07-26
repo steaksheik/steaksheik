@@ -86,6 +86,14 @@ function slugify(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+/** Surface the failing field, not just the generic "Request validation failed". */
+function apiErrorMessage(data: { error?: { message?: string; details?: { path?: string; message?: string }[] } }): string {
+  const base = data.error?.message ?? 'Failed';
+  const details = data.error?.details;
+  if (!details?.length) return base;
+  return `${base}: ${details.map((d) => (d.path ? `${d.path} — ${d.message}` : d.message)).join('; ')}`;
+}
+
 export default function CataloguePage() {
   const { authHeaders, hasPermission } = useAdmin();
   const [tab, setTab] = useState('categories');
@@ -188,7 +196,7 @@ export default function CataloguePage() {
         setCatDialogOpen(false);
         loadCategories();
       } else {
-        toast.error(data.error?.message ?? 'Failed');
+        toast.error(apiErrorMessage(data));
       }
     } catch {
       toast.error('Network error');
@@ -227,14 +235,26 @@ export default function CataloguePage() {
   }
 
   async function saveProduct() {
+    const price = parseFloat(prodPrice);
+    if (!Number.isFinite(price) || price <= 0) {
+      return toast.error('Enter a valid price greater than £0');
+    }
+    let comparePrice: number | null = null;
+    if (prodComparePrice.trim()) {
+      comparePrice = parseFloat(prodComparePrice);
+      if (!Number.isFinite(comparePrice) || comparePrice <= 0) {
+        return toast.error('Compare-at price must be a valid number greater than £0, or left blank');
+      }
+    }
+
     setProdSaving(true);
     try {
       const slug = prodSlug || slugify(prodName);
       const payload: Record<string, unknown> = {
         name: prodName, slug, description: prodDesc || null,
         shortDescription: prodShortDesc || null,
-        basePrice: parseFloat(prodPrice),
-        compareAtPrice: prodComparePrice ? parseFloat(prodComparePrice) : null,
+        basePrice: price,
+        compareAtPrice: comparePrice,
         categoryId: prodCategoryId, status: prodStatus,
         isFeatured: prodFeatured, isAvailable: prodAvailable,
       };
@@ -244,7 +264,7 @@ export default function CataloguePage() {
         credentials: 'include', headers: authHeaders(),
         body: JSON.stringify(payload),
       });
-           const data = await res.json();
+      const data = await res.json();
       if (data.success) {
         const productId = editingProd?.id ?? data.data?.product?.id;
         const previousImageUrl = editingProd?.images?.[0]?.url ?? '';
@@ -259,7 +279,7 @@ export default function CataloguePage() {
         loadProducts(selectedCategory, productSearch);
         loadCategories();
       } else {
-        toast.error(data.error?.message ?? 'Failed');
+        toast.error(apiErrorMessage(data));
       }
     } catch {
       toast.error('Network error');
