@@ -3,7 +3,8 @@ import './globals.css'
 import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
-import type { Metadata } from 'next'
+import { PwaRegister } from '@/components/pwa-register'
+import type { Metadata, Viewport } from 'next'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,12 +19,28 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: 'The Steak Sheikh',
   description: 'Premium halal steaks, signature burgers and sides — crafted with passion and delivered to your door.',
-  icons: { icon: '/favicon.svg', shortcut: '/favicon.svg' },
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    shortcut: '/favicon.svg',
+    apple: '/icons/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Steak Sheikh',
+  },
   openGraph: {
     title: 'The Steak Sheikh',
     description: 'Premium halal steaks, signature burgers and sides — crafted with passion and delivered to your door.',
     images: ['/og-image.png'],
   },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#0a0a0a',
 }
 
 export default function RootLayout({
@@ -43,8 +60,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+                    {children}
           <Toaster />
+          <PwaRegister />
           {/* IMPORTANT: Do not remove — handles chunk loading race conditions in the dev server */}
           <ChunkLoadErrorHandler />
         </ThemeProvider>
