@@ -91,6 +91,19 @@ const DEFAULT_HERO: HeroState = {
   overlay: true,
 };
 
+interface FeaturedSectionState {
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+  limit: number;
+}
+const DEFAULT_FEATURED_SECTION: FeaturedSectionState = {
+  enabled: true,
+  title: 'Our Most Loved Steaks',
+  subtitle: '',
+  limit: 5,
+};
+
 const GOOGLE_FONTS = [
   'Inter', 'DM Sans', 'Plus Jakarta Sans', 'Poppins', 'Montserrat',
   'Playfair Display', 'Lora', 'Merriweather', 'Cormorant Garamond',
@@ -143,6 +156,10 @@ export default function BrandingPage() {
   // Hero state
   const [hero, setHero] = useState<HeroState>(DEFAULT_HERO);
   const [savingHero, setSavingHero] = useState(false);
+
+  // Featured products section state
+  const [featuredSection, setFeaturedSection] = useState<FeaturedSectionState>(DEFAULT_FEATURED_SECTION);
+  const [savingFeatured, setSavingFeatured] = useState(false);
 
   // Theme state
   const [primaryColor, setPrimaryColor] = useState('#000000');
@@ -221,10 +238,32 @@ export default function BrandingPage() {
     }
   }, [authHeaders]);
 
+  const loadFeaturedSection = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/branding/featured-section', {
+        credentials: 'include',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      const f = data.data?.featuredSection;
+      if (f) {
+        setFeaturedSection({
+          enabled: f.enabled ?? true,
+          title: f.title ?? DEFAULT_FEATURED_SECTION.title,
+          subtitle: f.subtitle ?? '',
+          limit: f.limit ?? DEFAULT_FEATURED_SECTION.limit,
+        });
+      }
+    } catch {
+      /* non-fatal: keep defaults */
+    }
+  }, [authHeaders]);
+
   useEffect(() => {
     loadBrand();
     loadHero();
-  }, [loadBrand, loadHero]);
+    loadFeaturedSection();
+  }, [loadBrand, loadHero, loadFeaturedSection]);
 
   async function saveHero() {
     setSavingHero(true);
@@ -260,6 +299,33 @@ export default function BrandingPage() {
       toast.error('Network error');
     } finally {
       setSavingHero(false);
+    }
+  }
+
+  async function saveFeaturedSection() {
+    setSavingFeatured(true);
+    try {
+      const res = await fetch('/api/v1/branding/featured-section', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          enabled: featuredSection.enabled,
+          title: featuredSection.title.trim() || null,
+          subtitle: featuredSection.subtitle.trim() || null,
+          limit: featuredSection.limit,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Featured products section saved');
+      } else {
+        toast.error(data.error?.message ?? 'Failed to save');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setSavingFeatured(false);
     }
   }
 
@@ -373,7 +439,7 @@ export default function BrandingPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4 max-w-xl">
+        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
           <TabsTrigger value="general" className="gap-1.5">
             <Palette className="h-3.5 w-3.5" />
             General
@@ -381,6 +447,10 @@ export default function BrandingPage() {
           <TabsTrigger value="hero" className="gap-1.5">
             <Clapperboard className="h-3.5 w-3.5" />
             Hero
+          </TabsTrigger>
+          <TabsTrigger value="featured" className="gap-1.5">
+            <Star className="h-3.5 w-3.5" />
+            Featured
           </TabsTrigger>
           <TabsTrigger value="theme" className="gap-1.5">
             <Type className="h-3.5 w-3.5" />
@@ -738,6 +808,84 @@ export default function BrandingPage() {
               <Button onClick={saveHero} disabled={savingHero}>
                 {savingHero ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Hero
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Featured Products ── */}
+        <TabsContent value="featured" className="space-y-6 mt-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Featured Products Section</CardTitle>
+              <CardDescription>
+                Shows the products you&apos;ve marked as &quot;Featured&quot; in Catalogue on the homepage. Toggle
+                which products appear from each product&apos;s edit screen — this only controls the section itself.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={featuredSection.enabled}
+                  onCheckedChange={(v) => setFeaturedSection((f) => ({ ...f, enabled: v }))}
+                  disabled={!canWrite}
+                />
+                <div>
+                  <Label className="text-sm">Show on homepage</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Hidden automatically if no products are marked Featured.
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="featuredTitle">Section heading</Label>
+                  <Input
+                    id="featuredTitle"
+                    value={featuredSection.title}
+                    onChange={(e) => setFeaturedSection((f) => ({ ...f, title: e.target.value }))}
+                    placeholder="Our Most Loved Steaks"
+                    disabled={!canWrite}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="featuredLimit">Max products shown</Label>
+                  <Input
+                    id="featuredLimit"
+                    type="number"
+                    min={2}
+                    max={10}
+                    value={featuredSection.limit}
+                    onChange={(e) => {
+                      const n = Math.min(10, Math.max(2, Number(e.target.value) || 5));
+                      setFeaturedSection((f) => ({ ...f, limit: n }));
+                    }}
+                    disabled={!canWrite}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="featuredSubtitle">Subtitle (optional)</Label>
+                <Textarea
+                  id="featuredSubtitle"
+                  value={featuredSection.subtitle}
+                  onChange={(e) => setFeaturedSection((f) => ({ ...f, subtitle: e.target.value }))}
+                  placeholder="Hand-picked by our chefs"
+                  rows={2}
+                  disabled={!canWrite}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button onClick={saveFeaturedSection} disabled={savingFeatured}>
+                {savingFeatured ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Featured Section
               </Button>
             </div>
           )}
