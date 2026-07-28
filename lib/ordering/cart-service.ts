@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import { Decimal } from '@prisma/client/runtime/library';
+import { validateDiscountCode } from './discount-service';
 
 const CART_TTL_HOURS = 72;
 
@@ -78,6 +79,7 @@ export async function removeItem(itemId: string) {
 }
 
 export async function clearCart(cartId: string) {
+  await prisma.cart.update({ where: { id: cartId }, data: { couponCode: null } });
   return prisma.cartItem.deleteMany({ where: { cartId } });
 }
 
@@ -89,6 +91,7 @@ export interface CartSummary {
     productId: string;
     productName: string;
     productSlug: string;
+    categoryId: string | null;
     variantId: string | null;
     variantName: string | null;
     quantity: number;
@@ -100,6 +103,9 @@ export interface CartSummary {
   }[];
   subtotal: number;
   deliveryFee: number;
+  couponCode: string | null;
+  discountAmount: number;
+  couponError: string | null;
   total: number;
   itemCount: number;
 }
@@ -135,6 +141,7 @@ export async function getCartSummary(tenantId: string, token: string): Promise<C
       productId: item.productId,
       productName: product?.name ?? 'Unknown',
       productSlug: product?.slug ?? '',
+      categoryId: product?.categoryId ?? null,
       variantId: item.variantId,
       variantName: variant?.name ?? null,
       quantity: item.quantity,
@@ -146,16 +153,38 @@ export async function getCartSummary(tenantId: string, token: string): Promise<C
     };
   });
 
-  const subtotal = items.reduce((sum, i) => sum + i.lineTotal, 0);
+  const subtotal = Math.round(items.reduce((sum, i) => sum + i.lineTotal, 0) * 100) / 100;
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD ? 0 : DEFAULT_DELIVERY_FEE;
+
+  let couponCode: string | null = cart.couponCode;
+  let discountAmount = 0;
+  let couponError: string | null = null;
+
+  if (couponCode) {
+    const result = await validateDiscountCode(tenantId, couponCode, { subtotal, items }, cart.customerId);
+    if (result.ok) {
+      discountAmount = result.amount;
+    } else {
+      // Code no longer valid (expired, cap reached, cart changed) — drop it
+      // silently from the cart so checkout can't apply a stale discount, but
+      // surface why so the UI can tell the customer instead of just charging
+      // full price with no explanation.
+      couponError = result.error ?? 'This code is no longer valid';
+      couponCode = null;
+      await prisma.cart.update({ where: { id: cart.id }, data: { couponCode: null } });
+    }
+  }
 
   return {
     cartId: cart.id,
     token: cart.token,
     items,
-    subtotal: Math.round(subtotal * 100) / 100,
+    subtotal,
     deliveryFee,
-    total: Math.round((subtotal + deliveryFee) * 100) / 100,
+    couponCode,
+    discountAmount,
+    couponError,
+    total: Math.round((subtotal + deliveryFee - discountAmount) * 100) / 100,
     itemCount: items.reduce((sum, i) => sum + i.quantity, 0),
   };
 }
