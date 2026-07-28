@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCustomer } from '@/lib/customer-context';
@@ -22,6 +22,18 @@ export default function CustomerLoginPage() {
   const [emailConsent, setEmailConsent] = useState(false);
   const [smsConsent, setSmsConsent] = useState(false);
 
+  // Read ?mode=register&redirect=/account/loyalty without useSearchParams,
+  // so this page doesn't need a Suspense boundary just for a deep link.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'register') setMode('register');
+  }, []);
+
+  function redirectDestination(): string {
+    if (typeof window === 'undefined') return '/account';
+    return new URLSearchParams(window.location.search).get('redirect') || '/account';
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -34,7 +46,7 @@ export default function CustomerLoginPage() {
         });
         if (res.ok) {
           await refresh();
-          router.replace('/account');
+          router.replace(redirectDestination());
         } else {
           const json = await res.json();
           toast.error(json.error?.message || 'Login failed');
@@ -59,7 +71,7 @@ export default function CustomerLoginPage() {
           });
           if (loginRes.ok) {
             await refresh();
-            router.replace('/account');
+            router.replace(redirectDestination());
           }
         } else {
           const json = await res.json();
