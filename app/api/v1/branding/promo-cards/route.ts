@@ -1,4 +1,3 @@
-
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withRoute } from '@/lib/api/route';
@@ -31,12 +30,17 @@ const promoCardsSchema = z.object({
 
 export type PromoCardsInput = z.infer<typeof promoCardsSchema>;
 
+// Must match lib/storefront.ts's DEFAULT_PROMO_CARDS (the storefront's own
+// fallback) — divergence here previously meant the admin editor's "current
+// values" looked different from what customers actually saw, and saving
+// from the admin page would silently blank out images that were only ever
+// backed by the storefront's fallback, not a saved HomepageSection row.
 const DEFAULT: PromoCardsInput = {
   enabled: true,
   cards: [
-    { title: 'Steak Meal Deals', subtitle: 'SAVE UP TO 20%', priceText: null, imageUrl: null, ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
-    { title: 'Weekend Special', subtitle: 'RIBEYE + 2 SIDES', priceText: '£24.99', imageUrl: null, ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
-    { title: 'Free Delivery', subtitle: 'ON ORDERS OVER £25', priceText: null, imageUrl: null, ctaText: 'Order Now', ctaHref: '/menu', style: 'accent' },
+    { title: 'Steak Meal Deals', subtitle: 'SAVE UP TO 20%', priceText: null, imageUrl: 'https://cdn.abacus.ai/images/fd3807f8-af76-4c64-b50e-b11491e32a3f.png', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
+    { title: 'Weekend Special', subtitle: 'RIBEYE + 2 SIDES', priceText: '£24.99', imageUrl: 'https://cdn.abacus.ai/images/68cf5371-7416-4b2e-aa01-302b3bd01831.png', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
+    { title: 'Free Delivery', subtitle: 'ON ORDERS OVER £30', priceText: null, imageUrl: null, ctaText: 'Order Now', ctaHref: '/menu', style: 'accent' },
   ],
 };
 
