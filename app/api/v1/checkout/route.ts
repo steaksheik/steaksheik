@@ -96,11 +96,26 @@ export const POST = withRoute(async (req: NextRequest) => {
     });
   }
 
+  // Line items keep real product prices (so receipts read correctly) — a
+  // one-time Stripe coupon applies the discount to the session total instead.
+  const orderDiscount = Number(order.discount);
+  let stripeDiscounts: { coupon: string }[] | undefined;
+  if (orderDiscount > 0) {
+    const stripeCoupon = await stripe.coupons.create({
+      amount_off: Math.round(orderDiscount * 100),
+      currency: 'gbp',
+      duration: 'once',
+      name: order.couponCode ?? 'Discount',
+    });
+    stripeDiscounts = [{ coupon: stripeCoupon.id }];
+  }
+
   const session = await stripe.checkout.sessions.create({
     mode: 'payment',
     payment_method_types: ['card'],
     customer_email: email,
     line_items: lineItems,
+    discounts: stripeDiscounts,
     metadata: {
       orderId: order.id,
       orderNumber: order.orderNumber,
