@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import type { HeroConfig } from '@/lib/storefront';
+import type { HeroConfig, PromoCard } from '@/lib/storefront';
+import { useCustomer } from '@/lib/customer-context';
 import {
   Flame,
   Truck,
@@ -18,7 +19,6 @@ import {
   Handshake,
   Users,
   ShoppingBag,
-  Bike,
   UtensilsCrossed,
   Soup,
 } from 'lucide-react';
@@ -46,6 +46,15 @@ const IMG = {
 };
 
 const ACCENT = '#c9a96e';
+
+// Mirrors the real tier ladder in lib/ordering/loyalty-service.ts — keep in sync if those change.
+const LOYALTY_TIERS = [
+  { tier: 'BRONZE', threshold: 0, img: IMG.rChips, multiplier: '1x', perk: 'Earn 10 points per £1 spent' },
+  { tier: 'SILVER', threshold: 500, img: IMG.rDessert, multiplier: '1.25x', perk: 'Early access to specials' },
+  { tier: 'GOLD', threshold: 1500, img: IMG.rMedallions, multiplier: '1.5x', perk: 'Free delivery on all orders' },
+  { tier: 'PLATINUM', threshold: 5000, img: IMG.rPlated, multiplier: '2x', perk: 'Exclusive tasting events' },
+] as const;
+const MAX_TIER_THRESHOLD = LOYALTY_TIERS[LOYALTY_TIERS.length - 1].threshold;
 
 /**
  * Hero background: renders a single image/video or an auto-advancing
@@ -137,14 +146,20 @@ export function HomeClient({
   featuredTitle = 'Our Most Loved Steaks',
   featuredSubtitle = null,
   hero = null,
+  promoCards = [],
 }: {
   brandName: string;
   featured: StoreProduct[];
   featuredTitle?: string;
   featuredSubtitle?: string | null;
   hero?: HeroConfig | null;
+  promoCards?: PromoCard[];
 }) {
   const soon = (label: string) => toast.info(`${label} — coming soon`);
+  const { customer } = useCustomer();
+  const rewardsCta = customer
+    ? { href: '/account/loyalty', label: 'View My Rewards' }
+    : { href: '/account/login?mode=register&redirect=%2Faccount%2Floyalty', label: 'Join Now' };
   const [nlName, setNlName] = useState('');
   const [nlEmail, setNlEmail] = useState('');
 
@@ -217,75 +232,80 @@ export function HomeClient({
       </section>
 
       {/* ══ PROMO CARDS ══ */}
-      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-        <div className="grid gap-5 md:grid-cols-3">
-          {/* Meal deals */}
-          <div className="relative overflow-hidden rounded-xl bg-[#161311] text-white min-h-[180px] flex">
-            <div className="relative z-10 p-6 flex flex-col justify-center">
-              <h3 className="font-heading text-2xl font-extrabold leading-tight">STEAK<br />MEAL DEALS</h3>
-              <p className="mt-1 text-sm font-bold" style={{ color: ACCENT }}>SAVE UP TO 20%</p>
-              <button onClick={() => soon('Meal deals')} className="mt-4 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">Order Now</button>
-            </div>
-            <img src={IMG.steakFries} alt="Steak meal deal" className="absolute right-0 top-0 h-full w-1/2 object-cover" />
-            <div className="absolute right-0 top-0 h-full w-3/5 bg-gradient-to-l from-transparent to-[#161311]" />
+      {promoCards.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+          <div className="grid gap-5 md:grid-cols-3">
+            {promoCards.map((card, i) =>
+              card.style === 'accent' ? (
+                <div key={i} className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white min-h-[180px] p-6 flex flex-col justify-center">
+                  <h3 className="font-heading text-2xl font-extrabold leading-tight" style={{ color: ACCENT }}>{card.title}</h3>
+                  {card.subtitle && <p className="mt-1 text-sm text-white/70">{card.subtitle}</p>}
+                  {card.priceText && <p className="text-lg font-extrabold text-white">{card.priceText}</p>}
+                  <Link href={card.ctaHref} className="mt-4 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">{card.ctaText}</Link>
+                  <Flame className="absolute right-5 bottom-4 h-20 w-20 opacity-90" style={{ color: ACCENT }} strokeWidth={1.2} />
+                </div>
+              ) : (
+                <div key={i} className="relative overflow-hidden rounded-xl bg-[#161311] text-white min-h-[180px] flex">
+                  <div className="relative z-10 p-6 flex flex-col justify-center max-w-[65%]">
+                    <h3 className="font-heading text-2xl font-extrabold leading-tight">{card.title}</h3>
+                    {card.subtitle && <p className="mt-1 text-sm font-bold" style={{ color: ACCENT }}>{card.subtitle}</p>}
+                    {card.priceText && <p className="text-lg font-extrabold text-white">{card.priceText}</p>}
+                    <Link href={card.ctaHref} className="mt-4 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">{card.ctaText}</Link>
+                  </div>
+                  {card.imageUrl && (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={card.imageUrl} alt={card.title} className="absolute right-0 top-0 h-full w-1/2 object-cover" />
+                      <div className="absolute right-0 top-0 h-full w-3/5 bg-gradient-to-l from-transparent to-[#161311]" />
+                    </>
+                  )}
+                </div>
+              )
+            )}
           </div>
-          {/* Weekend special */}
-          <div className="relative overflow-hidden rounded-xl bg-[#161311] text-white min-h-[180px] flex">
-            <div className="relative z-10 p-6 flex flex-col justify-center">
-              <h3 className="font-heading text-2xl font-extrabold leading-tight">WEEKEND<br />SPECIAL</h3>
-              <p className="mt-1 text-xs font-semibold text-white/70">RIBEYE + 2 SIDES</p>
-              <p className="text-lg font-extrabold" style={{ color: ACCENT }}>£24.99</p>
-              <button onClick={() => soon('Weekend special')} className="mt-3 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">Order Now</button>
-            </div>
-            <img src={IMG.weekendPlate} alt="Weekend special ribeye and sides" className="absolute right-0 top-0 h-full w-1/2 object-cover" />
-            <div className="absolute right-0 top-0 h-full w-3/5 bg-gradient-to-l from-transparent to-[#161311]" />
-          </div>
-          {/* Free delivery */}
-          <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white min-h-[180px] p-6 flex flex-col justify-center">
-            <h3 className="font-heading text-2xl font-extrabold" style={{ color: ACCENT }}>FREE DELIVERY</h3>
-            <p className="mt-1 text-sm text-white/70">ON ORDERS OVER £25</p>
-            <button onClick={() => soon('Delivery')} className="mt-4 w-fit rounded-md bg-white px-4 py-2 text-[11px] font-bold uppercase tracking-wide text-[#0a0a0a] hover:bg-white/90 transition-colors">Order Now</button>
-            <Bike className="absolute right-5 bottom-4 h-20 w-20 opacity-90" style={{ color: ACCENT }} strokeWidth={1.2} />
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ══ REWARDS ══ */}
       <section id="rewards" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 scroll-mt-20">
         <h2 className="font-heading text-2xl font-extrabold">EARN POINTS. GET REWARDED.</h2>
         <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
           <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { pts: '1000', reward: 'Free Side', img: IMG.rChips, pct: 40 },
-              { pts: '2500', reward: 'Free Dessert', img: IMG.rDessert, pct: 60 },
-              { pts: '5000', reward: '£10 Off', img: IMG.rMedallions, pct: 75 },
-              { pts: '7500', reward: 'Free Steak', img: IMG.rPlated, pct: 90 },
-            ].map((tier) => (
-              <div key={tier.pts}>
+            {LOYALTY_TIERS.map((tier) => (
+              <div key={tier.tier}>
                 <div className="flex items-center gap-3">
                   <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-neutral-100">
-                    <img src={tier.img} alt={tier.reward} className="h-full w-full object-cover" />
+                    <img src={tier.img} alt={tier.tier} className="h-full w-full object-cover" />
                   </div>
                   <div>
-                    <div className="text-lg font-extrabold leading-none">{tier.pts}<span className="ml-1 text-[10px] font-semibold text-neutral-500">POINTS</span></div>
-                    <div className="mt-1 text-xs text-neutral-500">{tier.reward}</div>
+                    <div className="text-lg font-extrabold leading-none">{tier.tier}</div>
+                    <div className="mt-1 text-xs text-neutral-500">
+                      {tier.threshold === 0 ? 'From your first order' : `${tier.threshold.toLocaleString()}+ points`} · {tier.multiplier} points
+                    </div>
                   </div>
                 </div>
                 <div className="mt-3 h-1.5 w-full rounded-full bg-neutral-200">
-                  <div className="h-full rounded-full" style={{ width: `${tier.pct}%`, backgroundColor: ACCENT }} />
+                  <div className="h-full rounded-full" style={{ width: `${Math.max(8, (tier.threshold / MAX_TIER_THRESHOLD) * 100)}%`, backgroundColor: ACCENT }} />
                 </div>
+                <p className="mt-1.5 text-[11px] text-neutral-500">{tier.perk}</p>
               </div>
             ))}
           </div>
           <div className="rounded-xl bg-[#0a0a0a] p-6 text-white flex flex-col justify-center">
             <h3 className="font-heading text-xl font-extrabold">STEAK REWARDS</h3>
-            <p className="mt-2 text-sm text-white/60">Join our loyalty programme and unlock exclusive rewards and offers.</p>
-            <button onClick={() => soon('Steak Rewards')} className="mt-4 w-fit rounded-md px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide" style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}>Join Now</button>
+            <p className="mt-2 text-sm text-white/60">
+              {customer
+                ? 'Check your points balance and see how close you are to your next tier.'
+                : 'Earn 10 points per £1 on every order — join free and start earning today.'}
+            </p>
+            <Link href={rewardsCta.href} className="mt-4 w-fit rounded-md px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide" style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}>
+              {rewardsCta.label}
+            </Link>
           </div>
         </div>
       </section>
 
-            {/* ══ FEATURED PRODUCTS ══ */}
+      {/* ══ FEATURED PRODUCTS ══ */}
       {featured.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           <h2 className="font-heading text-2xl font-extrabold">{featuredTitle.toUpperCase()}</h2>
