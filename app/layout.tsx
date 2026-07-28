@@ -52,6 +52,28 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <script src="https://apps.abacus.ai/chatllm/appllm-lib.js"></script>
+        {/*
+          Chrome/Edge can decide the page is installable and fire
+          beforeinstallprompt before React has hydrated. Capture it here,
+          as early as physically possible, and stash it on window so the
+          React install button (mounted later) never misses it.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('beforeinstallprompt', function (e) {
+                e.preventDefault();
+                window.__pwaInstallPrompt = e;
+                window.dispatchEvent(new Event('pwaInstallPromptReady'));
+              });
+              window.addEventListener('appinstalled', function () {
+                window.__pwaInstalled = true;
+                window.__pwaInstallPrompt = null;
+                window.dispatchEvent(new Event('pwaInstalled'));
+              });
+            `,
+          }}
+        />
       </head>
       <body className={`${inter.variable} ${bebasNeue.variable} ${cormorant.variable} ${jetbrainsMono.variable} font-sans`}>
         <ThemeProvider
@@ -60,7 +82,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-                    {children}
+          {children}
           <Toaster />
           <PwaRegister />
           {/* IMPORTANT: Do not remove — handles chunk loading race conditions in the dev server */}
