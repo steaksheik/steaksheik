@@ -116,10 +116,15 @@ interface PromoCardState {
   ctaHref: string;
   style: 'image' | 'accent';
 }
+// Must match the storefront's own fallback (lib/storefront.ts) and the API
+// route's DEFAULT (app/api/v1/branding/promo-cards/route.ts) — otherwise
+// opening this editor before ever saving shows blank images that look fine
+// here but, once saved, permanently replace the images customers were
+// actually seeing on the homepage fallback.
 const DEFAULT_PROMO_CARDS: PromoCardState[] = [
-  { title: 'Steak Meal Deals', subtitle: 'SAVE UP TO 20%', priceText: '', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
-  { title: 'Weekend Special', subtitle: 'RIBEYE + 2 SIDES', priceText: '£24.99', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
-  { title: 'Free Delivery', subtitle: 'ON ORDERS OVER £25', priceText: '', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'accent' },
+  { title: 'Steak Meal Deals', subtitle: 'SAVE UP TO 20%', priceText: '', imageUrl: 'https://cdn.abacus.ai/images/fd3807f8-af76-4c64-b50e-b11491e32a3f.png', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
+  { title: 'Weekend Special', subtitle: 'RIBEYE + 2 SIDES', priceText: '£24.99', imageUrl: 'https://cdn.abacus.ai/images/68cf5371-7416-4b2e-aa01-302b3bd01831.png', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
+  { title: 'Free Delivery', subtitle: 'ON ORDERS OVER £30', priceText: '', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'accent' },
 ];
 const NEW_PROMO_CARD: PromoCardState = { title: '', subtitle: '', priceText: '', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' };
 
