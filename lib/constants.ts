@@ -58,6 +58,10 @@ export const PERMISSIONS: { resource: string; action: string; description: strin
   { resource: 'notifications:settings', action: 'read', description: 'View notification settings' },
   { resource: 'notifications:settings', action: 'write', description: 'Update notification settings' },
   { resource: 'notifications:logs', action: 'read', description: 'View notification history' },
+  // ── Discounts ──
+  { resource: 'discounts:codes', action: 'read', description: 'View discount codes' },
+  { resource: 'discounts:codes', action: 'write', description: 'Create/update discount codes' },
+  { resource: 'discounts:codes', action: 'delete', description: 'Delete discount codes' },
 ];
 
 /** Build the full permission string. */
