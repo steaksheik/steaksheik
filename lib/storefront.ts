@@ -66,6 +66,65 @@ export async function getHero(tenantId: string): Promise<HeroConfig | null> {
   };
 }
 
+export interface PromoCard {
+  title: string;
+  subtitle: string | null;
+  priceText: string | null;
+  imageUrl: string | null;
+  ctaText: string;
+  ctaHref: string;
+  style: 'image' | 'accent';
+}
+
+// Matches what the homepage looked like before this was configurable —
+// used until an admin saves their own cards via Admin -> Branding -> Promotions.
+const DEFAULT_PROMO_CARDS: PromoCard[] = [
+  {
+    title: 'Steak Meal Deals',
+    subtitle: 'SAVE UP TO 20%',
+    priceText: null,
+    imageUrl: 'https://cdn.abacus.ai/images/fd3807f8-af76-4c64-b50e-b11491e32a3f.png',
+    ctaText: 'Order Now',
+    ctaHref: '/menu',
+    style: 'image',
+  },
+  {
+    title: 'Weekend Special',
+    subtitle: 'RIBEYE + 2 SIDES',
+    priceText: '£24.99',
+    imageUrl: 'https://cdn.abacus.ai/images/68cf5371-7416-4b2e-aa01-302b3bd01831.png',
+    ctaText: 'Order Now',
+    ctaHref: '/menu',
+    style: 'image',
+  },
+  {
+    title: 'Free Delivery',
+    subtitle: 'ON ORDERS OVER £25',
+    priceText: null,
+    imageUrl: null,
+    ctaText: 'Order Now',
+    ctaHref: '/menu',
+    style: 'accent',
+  },
+];
+
+/**
+ * Fetch the homepage promo cards (HomepageSection type=PROMOTIONAL_BANNER).
+ * Falls back to the site's original 3 cards — now pointed at real pages
+ * instead of a "coming soon" toast — until an admin customises them.
+ */
+export async function getPromoCards(tenantId: string): Promise<PromoCard[]> {
+  const section = await prisma.homepageSection.findUnique({
+    where: { tenantId_type: { tenantId, type: 'PROMOTIONAL_BANNER' } },
+  });
+  if (!section) return DEFAULT_PROMO_CARDS;
+  if (!section.isVisible) return [];
+
+  const c = (section.content ?? {}) as Record<string, unknown>;
+  const cards = Array.isArray(c.cards) ? (c.cards as PromoCard[]) : [];
+  return cards.filter((card) => card && typeof card.title === 'string' && typeof card.ctaHref === 'string');
+}
+
 export interface PublicAnalyticsConfig {
   ga4MeasurementId: string | null;
   gtmContainerId: string | null;
@@ -108,6 +167,7 @@ export async function getCategories(tenantId: string) {
     include: { _count: { select: { products: { where: { status: 'PUBLISHED' } } } } },
   });
 }
+
 export interface FeaturedSectionConfig {
   enabled: boolean;
   title: string;
@@ -142,6 +202,7 @@ export async function getFeaturedSectionConfig(tenantId: string): Promise<Featur
     limit: typeof c.limit === 'number' && c.limit >= 2 && c.limit <= 10 ? c.limit : DEFAULT_FEATURED_SECTION.limit,
   };
 }
+
 /** Fetch featured published products. */
 export async function getFeaturedProducts(tenantId: string, limit = 6) {
   return prisma.product.findMany({
