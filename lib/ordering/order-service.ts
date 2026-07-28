@@ -33,45 +33,85 @@ export async function placeOrder(input: PlaceOrderInput) {
   const orderNumber = generateOrderNumber();
 
   const deliveryFee = input.type === 'COLLECTION' ? 0 : input.cart.deliveryFee;
-  const total = input.cart.subtotal + deliveryFee;
 
-  const order = await prisma.order.create({
-    data: {
-      tenantId: input.tenantId,
-      customerId: input.customerId || null,
-      orderNumber,
-      type: input.type,
-      subtotal: new Decimal(input.cart.subtotal),
-      deliveryFee: new Decimal(deliveryFee),
-      total: new Decimal(total),
-      deliveryFirstName: input.deliveryFirstName,
-      deliveryLastName: input.deliveryLastName,
-      deliveryLine1: input.deliveryLine1,
-      deliveryLine2: input.deliveryLine2,
-      deliveryCity: input.deliveryCity,
-      deliveryPostcode: input.deliveryPostcode,
-      deliveryPhone: input.deliveryPhone,
-      deliveryNotes: input.deliveryNotes,
-      guestEmail: input.guestEmail,
-      guestName: input.guestName,
-      guestPhone: input.guestPhone,
-      items: {
-        create: input.cart.items.map((item) => ({
-          productId: item.productId,
-          productName: item.productName,
-          variantName: item.variantName,
-          quantity: item.quantity,
-          unitPrice: new Decimal(item.unitPrice),
-          totalPrice: new Decimal(item.lineTotal),
-          modifiers: (item.modifiers ?? null) as never,
-          notes: item.notes,
-        })),
+  return prisma.$transaction(async (tx) => {
+    let discountAmount = 0;
+    let couponCode: string | null = null;
+    let discountId: string | null = null;
+
+    // Re-validate the coupon one last time inside the transaction to close
+    // the race window between two simultaneous checkouts both squeaking
+    // under a maxRedemptions cap.
+    if (input.cart.couponCode) {
+      const discount = await tx.discount.findUnique({
+        where: { tenantId_code: { tenantId: input.tenantId, code: input.cart.couponCode } },
+      });
+      if (discount && discount.isActive) {
+        const totalRedemptions = discount.maxRedemptions != null
+          ? await tx.discountRedemption.count({ where: { discountId: discount.id } })
+          : 0;
+        const underCap = discount.maxRedemptions == null || totalRedemptions < discount.maxRedemptions;
+        if (underCap) {
+          discountAmount = input.cart.discountAmount;
+          couponCode = discount.code;
+          discountId = discount.id;
+        }
+      }
+    }
+
+    const total = input.cart.subtotal + deliveryFee - discountAmount;
+
+    const order = await tx.order.create({
+      data: {
+        tenantId: input.tenantId,
+        customerId: input.customerId || null,
+        orderNumber,
+        type: input.type,
+        subtotal: new Decimal(input.cart.subtotal),
+        deliveryFee: new Decimal(deliveryFee),
+        discount: new Decimal(discountAmount),
+        couponCode,
+        total: new Decimal(total),
+        deliveryFirstName: input.deliveryFirstName,
+        deliveryLastName: input.deliveryLastName,
+        deliveryLine1: input.deliveryLine1,
+        deliveryLine2: input.deliveryLine2,
+        deliveryCity: input.deliveryCity,
+        deliveryPostcode: input.deliveryPostcode,
+        deliveryPhone: input.deliveryPhone,
+        deliveryNotes: input.deliveryNotes,
+        guestEmail: input.guestEmail,
+        guestName: input.guestName,
+        guestPhone: input.guestPhone,
+        items: {
+          create: input.cart.items.map((item) => ({
+            productId: item.productId,
+            productName: item.productName,
+            variantName: item.variantName,
+            quantity: item.quantity,
+            unitPrice: new Decimal(item.unitPrice),
+            totalPrice: new Decimal(item.lineTotal),
+            modifiers: (item.modifiers ?? null) as never,
+            notes: item.notes,
+          })),
+        },
       },
-    },
-    include: { items: true },
-  });
+      include: { items: true },
+    });
 
-  return order;
+    if (discountId && discountAmount > 0) {
+      await tx.discountRedemption.create({
+        data: {
+          discountId,
+          orderId: order.id,
+          customerId: input.customerId || null,
+          amount: new Decimal(discountAmount),
+        },
+      });
+    }
+
+    return order;
+  });
 }
 
 export async function getOrderByNumber(tenantId: string, orderNumber: string) {
