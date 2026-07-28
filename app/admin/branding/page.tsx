@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { MediaUpload, type UploadedMedia } from '@/components/admin/media-upload';
 import {
@@ -26,6 +27,8 @@ import {
   ArrowUp,
   ArrowDown,
   Star,
+  Tag,
+  Plus,
 } from 'lucide-react';
 
 interface Brand {
@@ -104,6 +107,22 @@ const DEFAULT_FEATURED_SECTION: FeaturedSectionState = {
   limit: 5,
 };
 
+interface PromoCardState {
+  title: string;
+  subtitle: string;
+  priceText: string;
+  imageUrl: string;
+  ctaText: string;
+  ctaHref: string;
+  style: 'image' | 'accent';
+}
+const DEFAULT_PROMO_CARDS: PromoCardState[] = [
+  { title: 'Steak Meal Deals', subtitle: 'SAVE UP TO 20%', priceText: '', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
+  { title: 'Weekend Special', subtitle: 'RIBEYE + 2 SIDES', priceText: '£24.99', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' },
+  { title: 'Free Delivery', subtitle: 'ON ORDERS OVER £25', priceText: '', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'accent' },
+];
+const NEW_PROMO_CARD: PromoCardState = { title: '', subtitle: '', priceText: '', imageUrl: '', ctaText: 'Order Now', ctaHref: '/menu', style: 'image' };
+
 const GOOGLE_FONTS = [
   'Inter', 'DM Sans', 'Plus Jakarta Sans', 'Poppins', 'Montserrat',
   'Playfair Display', 'Lora', 'Merriweather', 'Cormorant Garamond',
@@ -160,6 +179,11 @@ export default function BrandingPage() {
   // Featured products section state
   const [featuredSection, setFeaturedSection] = useState<FeaturedSectionState>(DEFAULT_FEATURED_SECTION);
   const [savingFeatured, setSavingFeatured] = useState(false);
+
+  // Promo cards state
+  const [promoEnabled, setPromoEnabled] = useState(true);
+  const [promoCards, setPromoCards] = useState<PromoCardState[]>(DEFAULT_PROMO_CARDS);
+  const [savingPromoCards, setSavingPromoCards] = useState(false);
 
   // Theme state
   const [primaryColor, setPrimaryColor] = useState('#000000');
@@ -259,11 +283,39 @@ export default function BrandingPage() {
     }
   }, [authHeaders]);
 
+  const loadPromoCards = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/branding/promo-cards', {
+        credentials: 'include',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      const p = data.data?.promoCards;
+      if (p) {
+        setPromoEnabled(p.enabled ?? true);
+        if (Array.isArray(p.cards) && p.cards.length > 0) {
+          setPromoCards(p.cards.map((c: Partial<PromoCardState>) => ({
+            title: c.title ?? '',
+            subtitle: c.subtitle ?? '',
+            priceText: c.priceText ?? '',
+            imageUrl: c.imageUrl ?? '',
+            ctaText: c.ctaText ?? 'Order Now',
+            ctaHref: c.ctaHref ?? '/menu',
+            style: c.style === 'accent' ? 'accent' : 'image',
+          })));
+        }
+      }
+    } catch {
+      /* non-fatal: keep defaults */
+    }
+  }, [authHeaders]);
+
   useEffect(() => {
     loadBrand();
     loadHero();
     loadFeaturedSection();
-  }, [loadBrand, loadHero, loadFeaturedSection]);
+    loadPromoCards();
+  }, [loadBrand, loadHero, loadFeaturedSection, loadPromoCards]);
 
   async function saveHero() {
     setSavingHero(true);
@@ -327,6 +379,63 @@ export default function BrandingPage() {
     } finally {
       setSavingFeatured(false);
     }
+  }
+
+  async function savePromoCards() {
+    if (promoCards.some((c) => !c.title.trim() || !c.ctaHref.trim())) {
+      toast.error('Every card needs a title and a link');
+      return;
+    }
+    setSavingPromoCards(true);
+    try {
+      const res = await fetch('/api/v1/branding/promo-cards', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({
+          enabled: promoEnabled,
+          cards: promoCards.map((c) => ({
+            title: c.title.trim(),
+            subtitle: c.subtitle.trim() || null,
+            priceText: c.priceText.trim() || null,
+            imageUrl: c.imageUrl.trim() || null,
+            ctaText: c.ctaText.trim() || 'Order Now',
+            ctaHref: c.ctaHref.trim(),
+            style: c.style,
+          })),
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Promo cards saved');
+      } else {
+        toast.error(data.error?.message ?? 'Failed to save');
+      }
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setSavingPromoCards(false);
+    }
+  }
+
+  // Promo card helpers
+  function addPromoCard() {
+    setPromoCards((cards) => (cards.length >= 6 ? cards : [...cards, { ...NEW_PROMO_CARD }]));
+  }
+  function removePromoCard(idx: number) {
+    setPromoCards((cards) => cards.filter((_, i) => i !== idx));
+  }
+  function movePromoCard(idx: number, dir: -1 | 1) {
+    setPromoCards((cards) => {
+      const next = [...cards];
+      const target = idx + dir;
+      if (target < 0 || target >= next.length) return cards;
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+  }
+  function updatePromoCard(idx: number, patch: Partial<PromoCardState>) {
+    setPromoCards((cards) => cards.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
   }
 
   // Hero slide helpers
@@ -439,7 +548,7 @@ export default function BrandingPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5 max-w-2xl">
+        <TabsList className="grid w-full grid-cols-6 max-w-3xl">
           <TabsTrigger value="general" className="gap-1.5">
             <Palette className="h-3.5 w-3.5" />
             General
@@ -451,6 +560,10 @@ export default function BrandingPage() {
           <TabsTrigger value="featured" className="gap-1.5">
             <Star className="h-3.5 w-3.5" />
             Featured
+          </TabsTrigger>
+          <TabsTrigger value="promotions" className="gap-1.5">
+            <Tag className="h-3.5 w-3.5" />
+            Promotions
           </TabsTrigger>
           <TabsTrigger value="theme" className="gap-1.5">
             <Type className="h-3.5 w-3.5" />
@@ -886,6 +999,115 @@ export default function BrandingPage() {
               <Button onClick={saveFeaturedSection} disabled={savingFeatured}>
                 {savingFeatured ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Featured Section
+              </Button>
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Promotions ── */}
+        <TabsContent value="promotions" className="space-y-6 mt-6">
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base">Promo Cards</CardTitle>
+              <CardDescription>
+                The row of deal cards just below the hero. Each card&apos;s button links wherever you point it — a
+                product, a category, or just the menu. This doesn&apos;t apply a discount automatically at checkout;
+                if a card promises a price, set that price on a real product in Catalogue and link to it here.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center gap-3">
+                <Switch checked={promoEnabled} onCheckedChange={setPromoEnabled} disabled={!canWrite} />
+                <div>
+                  <Label className="text-sm">Show on homepage</Label>
+                  <p className="text-xs text-muted-foreground">Hides the whole row when off.</p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-4">
+                {promoCards.map((card, idx) => (
+                  <div key={idx} className="rounded-lg border p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="secondary" className="text-[10px]">Card {idx + 1}</Badge>
+                      <div className="flex gap-1">
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => movePromoCard(idx, -1)} disabled={!canWrite || idx === 0}>
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => movePromoCard(idx, 1)} disabled={!canWrite || idx === promoCards.length - 1}>
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removePromoCard(idx)} disabled={!canWrite}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Style</Label>
+                        <Select value={card.style} onValueChange={(v) => updatePromoCard(idx, { style: v as 'image' | 'accent' })}>
+                          <SelectTrigger disabled={!canWrite}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="image">Image card</SelectItem>
+                            <SelectItem value="accent">Plain accent banner</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Title</Label>
+                        <Input value={card.title} onChange={(e) => updatePromoCard(idx, { title: e.target.value })} placeholder="Weekend Special" disabled={!canWrite} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Subtitle (optional)</Label>
+                        <Input value={card.subtitle} onChange={(e) => updatePromoCard(idx, { subtitle: e.target.value })} placeholder="RIBEYE + 2 SIDES" disabled={!canWrite} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Price text (optional)</Label>
+                        <Input value={card.priceText} onChange={(e) => updatePromoCard(idx, { priceText: e.target.value })} placeholder="£24.99" disabled={!canWrite} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Button text</Label>
+                        <Input value={card.ctaText} onChange={(e) => updatePromoCard(idx, { ctaText: e.target.value })} placeholder="Order Now" disabled={!canWrite} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Button link</Label>
+                        <Input value={card.ctaHref} onChange={(e) => updatePromoCard(idx, { ctaHref: e.target.value })} placeholder="/menu or /product/ribeye-steak" disabled={!canWrite} />
+                      </div>
+                    </div>
+
+                    {card.style === 'image' && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">Image</Label>
+                        <MediaUpload
+                          accept="image"
+                          folder="marketing"
+                          value={card.imageUrl || null}
+                          onUploaded={(m) => updatePromoCard(idx, { imageUrl: m.url })}
+                          onClear={() => updatePromoCard(idx, { imageUrl: '' })}
+                          disabled={!canWrite}
+                          compact
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {canWrite && (
+                <Button type="button" variant="outline" size="sm" onClick={addPromoCard} disabled={promoCards.length >= 6}>
+                  <Plus className="h-3.5 w-3.5 mr-1.5" /> Add card
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+
+          {canWrite && (
+            <div className="flex justify-end">
+              <Button onClick={savePromoCards} disabled={savingPromoCards}>
+                {savingPromoCards ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Promo Cards
               </Button>
             </div>
           )}
