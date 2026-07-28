@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import { useCart } from '@/lib/cart-context';
-import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
+import { X, Minus, Plus, Trash2, ShoppingBag, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -12,10 +13,23 @@ function fmt(n: number) {
 }
 
 export function CartDrawer() {
-  const { items, subtotal, deliveryFee, total, itemCount, drawerOpen, closeDrawer, updateQuantity, removeItem, loading } = useCart();
+  const {
+    items, subtotal, deliveryFee, couponCode, discountAmount, total, itemCount,
+    drawerOpen, closeDrawer, updateQuantity, removeItem, applyCoupon, removeCoupon, loading,
+  } = useCart();
   const router = useRouter();
+  const [promoInput, setPromoInput] = useState('');
+  const [applying, setApplying] = useState(false);
 
   if (!drawerOpen) return null;
+
+  async function handleApplyPromo() {
+    if (!promoInput.trim()) return;
+    setApplying(true);
+    const ok = await applyCoupon(promoInput.trim());
+    setApplying(false);
+    if (ok) setPromoInput('');
+  }
 
   return (
     <>
@@ -91,9 +105,42 @@ export function CartDrawer() {
         {/* Footer */}
         {items.length > 0 && (
           <div className="border-t border-white/10 px-6 py-4 space-y-3">
+            {couponCode ? (
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <Tag className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+                  <span className="font-mono font-bold">{couponCode}</span>
+                </div>
+                <button onClick={removeCoupon} disabled={loading} className="text-xs text-white/40 hover:text-white/70 transition-colors disabled:opacity-40">
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
+                  placeholder="Promo code"
+                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-wide text-white placeholder:text-white/30 focus:outline-none focus:border-[#c9a96e]/50"
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={applying || !promoInput.trim()}
+                  className="rounded-lg border border-white/10 px-3 text-xs font-bold uppercase tracking-wide hover:bg-white/10 transition-colors disabled:opacity-40"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
             <div className="flex justify-between text-sm text-white/60">
               <span>Subtotal</span><span>{fmt(subtotal)}</span>
             </div>
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-sm" style={{ color: ACCENT }}>
+                <span>Discount{couponCode ? ` (${couponCode})` : ''}</span><span>-{fmt(discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm text-white/60">
               <span>Delivery</span>
               <span>{deliveryFee === 0 ? <span style={{ color: ACCENT }}>Free</span> : fmt(deliveryFee)}</span>
