@@ -24,6 +24,8 @@ interface CartState {
   items: CartItem[];
   subtotal: number;
   deliveryFee: number;
+  couponCode: string | null;
+  discountAmount: number;
   total: number;
   itemCount: number;
   loading: boolean;
@@ -34,6 +36,8 @@ interface CartContextValue extends CartState {
   addItem: (productId: string, variantId?: string, quantity?: number, modifiers?: unknown, notes?: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
+  applyCoupon: (code: string) => Promise<boolean>;
+  removeCoupon: () => Promise<void>;
   openDrawer: () => void;
   closeDrawer: () => void;
   clearLocalCart: () => void;
@@ -68,14 +72,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     items: [],
     subtotal: 0,
     deliveryFee: 0,
+    couponCode: null,
+    discountAmount: 0,
     total: 0,
     itemCount: 0,
     loading: false,
     drawerOpen: false,
   });
 
-  const syncFromApi = useCallback((data: CartState & { token: string }) => {
+  const syncFromApi = useCallback((data: CartState & { token: string; couponError?: string | null }) => {
     storeToken(data.token);
+    if (data.couponError) toast.error(data.couponError);
     setState(prev => ({
       ...prev,
       cartId: data.cartId,
@@ -83,6 +90,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       items: data.items,
       subtotal: data.subtotal,
       deliveryFee: data.deliveryFee,
+      couponCode: data.couponCode ?? null,
+      discountAmount: data.discountAmount ?? 0,
       total: data.total,
       itemCount: data.itemCount,
       loading: false,
@@ -163,10 +172,48 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [syncFromApi]);
 
+  const applyCoupon = useCallback(async (code: string) => {
+    const token = getStoredToken();
+    if (!token) { toast.error('Add an item to your cart first'); return false; }
+    setState(prev => ({ ...prev, loading: true }));
+    try {
+      const data = await apiFetch('/api/v1/cart/coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartToken: token, code }),
+      });
+      syncFromApi(data);
+      toast.success(`Code "${data.couponCode}" applied`);
+      return true;
+    } catch (e) {
+      toast.error((e as Error).message || 'Invalid code');
+      setState(prev => ({ ...prev, loading: false }));
+      return false;
+    }
+  }, [syncFromApi]);
+
+  const removeCoupon = useCallback(async () => {
+    const token = getStoredToken();
+    if (!token) return;
+    setState(prev => ({ ...prev, loading: true }));
+    try {
+      const data = await apiFetch('/api/v1/cart/coupon', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cartToken: token }),
+      });
+      syncFromApi(data);
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to remove code');
+      setState(prev => ({ ...prev, loading: false }));
+    }
+  }, [syncFromApi]);
+
   const clearLocalCart = useCallback(() => {
     clearToken();
     setState({
       cartId: null, token: null, items: [], subtotal: 0, deliveryFee: 0,
+      couponCode: null, discountAmount: 0,
       total: 0, itemCount: 0, loading: false, drawerOpen: false,
     });
   }, []);
@@ -177,6 +224,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       addItem,
       updateQuantity,
       removeItem: removeItemFn,
+      applyCoupon,
+      removeCoupon,
       openDrawer: () => setState(prev => ({ ...prev, drawerOpen: true })),
       closeDrawer: () => setState(prev => ({ ...prev, drawerOpen: false })),
       clearLocalCart,
