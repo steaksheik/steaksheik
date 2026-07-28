@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useCart } from '@/lib/cart-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Truck, Store, ArrowLeft, Loader2 } from 'lucide-react';
+import { Truck, Store, ArrowLeft, Loader2, Tag } from 'lucide-react';
 import Link from 'next/link';
 
 const ACCENT = '#c9a96e';
@@ -21,7 +21,7 @@ interface CustomerSession {
 }
 
 export default function CheckoutPage() {
-  const { items, subtotal, deliveryFee, total, token, clearLocalCart, itemCount } = useCart();
+  const { items, subtotal, deliveryFee, couponCode, discountAmount, token, clearLocalCart, itemCount, applyCoupon, removeCoupon } = useCart();
   const router = useRouter();
   const params = useSearchParams();
   const cancelled = params.get('cancelled');
@@ -31,6 +31,8 @@ export default function CheckoutPage() {
   const [customer, setCustomer] = useState<CustomerSession | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [promoInput, setPromoInput] = useState('');
+  const [applyingPromo, setApplyingPromo] = useState(false);
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '',
@@ -180,9 +182,17 @@ export default function CheckoutPage() {
   }
 
   const effFee = orderType === 'COLLECTION' ? 0 : deliveryFee;
-  const effTotal = subtotal + effFee;
+  const effTotal = subtotal + effFee - discountAmount;
 
   const inputCls = 'w-full rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/30 focus:border-[#c9a96e] focus:outline-none';
+
+  async function handleApplyPromo() {
+    if (!promoInput.trim()) return;
+    setApplyingPromo(true);
+    const ok = await applyCoupon(promoInput.trim());
+    setApplyingPromo(false);
+    if (ok) setPromoInput('');
+  }
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
@@ -303,8 +313,39 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
+            {couponCode ? (
+              <div className="flex items-center justify-between rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <Tag className="h-3.5 w-3.5" style={{ color: ACCENT }} />
+                  <span className="font-mono font-bold">{couponCode}</span>
+                </div>
+                <button onClick={() => removeCoupon()} className="text-xs text-white/40 hover:text-white/70 transition-colors">Remove</button>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  value={promoInput}
+                  onChange={(e) => setPromoInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleApplyPromo(); }}
+                  placeholder="Promo code"
+                  className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs uppercase tracking-wide text-white placeholder:text-white/30 focus:outline-none focus:border-[#c9a96e]/50"
+                />
+                <button
+                  onClick={handleApplyPromo}
+                  disabled={applyingPromo || !promoInput.trim()}
+                  className="rounded-lg border border-white/10 px-3 text-xs font-bold uppercase tracking-wide hover:bg-white/10 transition-colors disabled:opacity-40"
+                >
+                  Apply
+                </button>
+              </div>
+            )}
             <div className="border-t border-white/10 pt-3 space-y-2">
               <div className="flex justify-between text-sm text-white/60"><span>Subtotal</span><span>{fmt(subtotal)}</span></div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-sm" style={{ color: ACCENT }}>
+                  <span>Discount{couponCode ? ` (${couponCode})` : ''}</span><span>-{fmt(discountAmount)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm text-white/60"><span>Delivery</span><span>{effFee === 0 ? 'Free' : fmt(effFee)}</span></div>
               <div className="flex justify-between text-lg font-bold pt-2 border-t border-white/10">
                 <span>Total</span><span style={{ color: ACCENT }}>{fmt(effTotal)}</span>
