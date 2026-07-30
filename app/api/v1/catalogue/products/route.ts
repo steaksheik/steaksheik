@@ -5,6 +5,8 @@ import { ok } from '@/lib/api/response';
 import { requirePermission, publicTenant } from '@/lib/auth/context';
 import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit/service';
+import { ALLERGENS } from '@/lib/allergens';
+import { Errors } from '@/lib/api/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,12 +77,21 @@ const createSchema = z.object({
   sortOrder: z.number().int().default(0),
   nutritionalInfo: z.record(z.unknown()).optional().nullable(),
   metadata: z.record(z.unknown()).optional().nullable(),
+  allergens: z.array(z.enum(ALLERGENS)).default([]),
+  allergensConfirmed: z.boolean().default(false),
 });
 
 /** POST /api/v1/catalogue/products — create product. */
 export const POST = withRoute(async (req: NextRequest) => {
   const ctx = await requirePermission(req, 'catalogue:products:write');
   const body = createSchema.parse(await req.json().catch(() => ({})));
+
+  // Natasha's Law: a product can never go live without an admin explicitly
+  // confirming its allergen info — even "confirmed, none present" is fine,
+  // but "never checked" must not silently become "assumed safe".
+  if (body.status === 'PUBLISHED' && !body.allergensConfirmed) {
+    throw Errors.validation('Allergen information must be confirmed before this item can be published');
+  }
 
   // Verify category belongs to tenant
   const cat = await prisma.category.findFirst({ where: { id: body.categoryId, tenantId: ctx.tenantId } });
@@ -104,6 +115,8 @@ export const POST = withRoute(async (req: NextRequest) => {
       sortOrder: body.sortOrder,
       nutritionalInfo: (body.nutritionalInfo ?? null) as never,
       metadata: (body.metadata ?? null) as never,
+      allergens: body.allergens,
+      allergensConfirmed: body.allergensConfirmed,
     },
     include: {
       category: { select: { id: true, name: true, slug: true } },
