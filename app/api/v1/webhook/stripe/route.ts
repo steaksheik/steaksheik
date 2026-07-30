@@ -3,6 +3,7 @@ import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { awardOrderPoints } from '@/lib/ordering/loyalty-service';
+import { clearCart } from '@/lib/ordering/cart-service';
 import { sendNewOrderAdminAlert, sendOrderStatusUpdate } from '@/lib/notifications/email-service';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,30 @@ export async function POST(req: NextRequest) {
   }
 
   logger.info('[stripe-webhook] Received event', { type: event.type, id: event.id });
+
+  // Stripe documents that webhook events can be delivered more than once
+  // (retries, redelivery) — dedupe by event.id before doing anything so a
+  // redelivered 'checkout.session.completed' can't re-confirm an order,
+  // re-award loyalty points twice, or re-send confirmation emails.
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.expired') {
+    const session = event.data.object as { metadata?: { tenantId?: string } };
+    const tenantId = session.metadata?.tenantId;
+    if (tenantId) {
+      try {
+        await prisma.processedEvent.create({
+          data: { tenantId, eventId: event.id, handlerName: 'stripe_webhook' },
+        });
+      } catch (err) {
+        if ((err as { code?: string })?.code === 'P2002') {
+          logger.info('[stripe-webhook] Duplicate event ignored', { eventId: event.id, type: event.type });
+          return NextResponse.json({ received: true, duplicate: true });
+        }
+        // Fail open on an unexpected dedup-check error — missing this one
+        // safety net is better than dropping a real payment confirmation.
+        logger.warn('[stripe-webhook] Dedup check failed, processing anyway', { eventId: event.id, error: (err as Error).message });
+      }
+    }
+  }
 
   try {
     switch (event.type) {
@@ -63,6 +88,18 @@ export async function POST(req: NextRequest) {
         }
 
         logger.info('[stripe-webhook] Order confirmed', { orderId });
+
+        // Only now — payment is actually confirmed — clear the cart that
+        // placed this order, so a decline/abandon never wipes it prematurely.
+        const cartToken = session.metadata?.cartToken;
+        if (cartToken) {
+          try {
+            const cart = await prisma.cart.findUnique({ where: { token: cartToken }, select: { id: true } });
+            if (cart) await clearCart(cart.id);
+          } catch (cartErr) {
+            logger.error('[stripe-webhook] Failed to clear cart', { orderId, error: (cartErr as Error).message });
+          }
+        }
 
         // Send notification emails (fire-and-forget)
         try {
