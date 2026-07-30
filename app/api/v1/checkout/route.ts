@@ -2,8 +2,9 @@ import { NextRequest } from 'next/server';
 import { withRoute } from '@/lib/api/route';
 import { ok, fail } from '@/lib/api/response';
 import { publicTenant } from '@/lib/auth/context';
-import { getCartSummary, clearCart } from '@/lib/ordering/cart-service';
+import { getCartSummary } from '@/lib/ordering/cart-service';
 import { placeOrder } from '@/lib/ordering/order-service';
+import { validateDeliveryPostcode } from '@/lib/ordering/delivery-validation';
 import { stripe } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
@@ -43,6 +44,10 @@ export const POST = withRoute(async (req: NextRequest) => {
   if (body.type === 'DELIVERY') {
     if (!body.deliveryFirstName || !body.deliveryLine1 || !body.deliveryCity || !body.deliveryPostcode) {
       return fail('MISSING_ADDRESS', 'Delivery address is required', { status: 400 });
+    }
+    const postcodeCheck = await validateDeliveryPostcode(tenantId, body.deliveryPostcode);
+    if (!postcodeCheck.ok) {
+      return fail('INVALID_ADDRESS', postcodeCheck.error ?? 'Invalid delivery address', { status: 400 });
     }
   }
 
@@ -120,6 +125,7 @@ export const POST = withRoute(async (req: NextRequest) => {
       orderId: order.id,
       orderNumber: order.orderNumber,
       tenantId,
+      cartToken: body.cartToken,
     },
     success_url: `${origin}/order-confirmation?orderNumber=${order.orderNumber}`,
     cancel_url: `${origin}/checkout?cancelled=true`,
@@ -136,8 +142,10 @@ export const POST = withRoute(async (req: NextRequest) => {
     },
   });
 
-  // Clear cart after checkout
-  await clearCart(cart.cartId);
+  // The cart is deliberately NOT cleared here — it's only cleared once the
+  // Stripe webhook confirms payment actually succeeded (see webhook/stripe/
+  // route.ts). Clearing eagerly meant a declined card or an abandoned
+  // checkout left the customer with an empty cart to rebuild from scratch.
 
   return ok({
     sessionUrl: session.url,
