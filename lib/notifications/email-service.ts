@@ -285,6 +285,34 @@ export async function sendOrderCancelledEmail(order: {
   });
 }
 
+// ── Order Refunded -> Customer notification ──────────────
+export async function sendOrderRefundedEmail(order: {
+  orderNumber: string;
+  refundAmount: number;
+  orderTotal: number;
+  customerEmail: string;
+  customerName?: string;
+}) {
+  const isPartial = order.refundAmount < order.orderTotal;
+  const content = `
+    <h2 style="color: #0a0a0a; margin: 0 0 8px;">Refund Processed</h2>
+    <p style="color: #666; margin: 0 0 20px;">Hi ${order.customerName ?? 'there'},</p>
+    <p style="margin: 0 0 20px;">We've processed a${isPartial ? ' partial' : ''} refund for your order.</p>
+    <div style="background: #f8f6f1; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+      <p style="margin: 4px 0;"><strong>Order Number:</strong> ${order.orderNumber}</p>
+      <p style="margin: 4px 0;"><strong>Refunded Amount:</strong> ${fmtPrice(order.refundAmount)}</p>
+    </div>
+    <p style="color: #666; font-size: 13px;">Refunds typically appear on your original payment method within 5-10 business days.</p>
+  `;
+
+  return sendNotificationEmail({
+    notificationId: process.env.NOTIF_ID_ORDER_REFUNDED || '',
+    subject: `Order ${order.orderNumber} - Refund Processed`,
+    body: emailWrapper(content),
+    recipientEmail: order.customerEmail,
+  });
+}
+
 // ── Welcome Email -> Customer ─────────────────────────────
 export async function sendWelcomeEmail(customer: {
   email: string;
