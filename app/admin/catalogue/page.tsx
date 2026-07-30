@@ -15,6 +15,8 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { MediaPicker } from '@/components/admin/media-picker';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ALLERGENS } from '@/lib/allergens';
 import {
   Plus,
   Loader2,
@@ -59,6 +61,8 @@ interface Product {
   category: { id: string; name: string; slug: string };
   images: { id: string; url: string; altText: string | null; isPrimary: boolean }[];
   _count: { variants: number; modifierGroups: number };
+  allergens: string[];
+  allergensConfirmed: boolean;
 }
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -128,6 +132,8 @@ export default function CataloguePage() {
   const [prodFeatured, setProdFeatured] = useState(false);
   const [prodAvailable, setProdAvailable] = useState(true);
   const [prodImageUrl, setProdImageUrl] = useState('');
+  const [prodAllergens, setProdAllergens] = useState<string[]>([]);
+  const [prodAllergensConfirmed, setProdAllergensConfirmed] = useState(false);
   const [prodSaving, setProdSaving] = useState(false);
 
   const canWrite = hasPermission('catalogue:categories:write');
@@ -231,7 +237,13 @@ export default function CataloguePage() {
     setProdFeatured(prod?.isFeatured ?? false);
     setProdAvailable(prod?.isAvailable ?? true);
     setProdImageUrl(prod?.images?.[0]?.url ?? '');
+    setProdAllergens(prod?.allergens ?? []);
+    setProdAllergensConfirmed(prod?.allergensConfirmed ?? false);
     setProdDialogOpen(true);
+  }
+
+  function toggleAllergen(a: string) {
+    setProdAllergens((prev) => (prev.includes(a) ? prev.filter((x) => x !== a) : [...prev, a]));
   }
 
   async function saveProduct() {
@@ -246,6 +258,9 @@ export default function CataloguePage() {
         return toast.error('Compare-at price must be a valid number greater than £0, or left blank');
       }
     }
+    if (prodStatus === 'PUBLISHED' && !prodAllergensConfirmed) {
+      return toast.error('Confirm allergen information before publishing this item');
+    }
 
     setProdSaving(true);
     try {
@@ -257,6 +272,7 @@ export default function CataloguePage() {
         compareAtPrice: comparePrice,
         categoryId: prodCategoryId, status: prodStatus,
         isFeatured: prodFeatured, isAvailable: prodAvailable,
+        allergens: prodAllergens, allergensConfirmed: prodAllergensConfirmed,
       };
       const url = editingProd ? `/api/v1/catalogue/products/${editingProd.id}` : '/api/v1/catalogue/products';
       const res = await fetch(url, {
@@ -561,6 +577,27 @@ export default function CataloguePage() {
             <div className="space-y-2">
               <Label>Image</Label>
               <MediaPicker value={prodImageUrl} onChange={setProdImageUrl} folder="products" />
+            </div>
+
+            <Separator />
+
+            <div className="space-y-2">
+              <Label>Allergens</Label>
+              <p className="text-xs text-muted-foreground">
+                Tick every allergen this item contains — required by UK law before it can be published, even if none apply.
+              </p>
+              <div className="grid grid-cols-2 gap-1.5 rounded-md border p-3">
+                {ALLERGENS.map((a) => (
+                  <label key={a} className="flex items-center gap-2 text-xs">
+                    <Checkbox checked={prodAllergens.includes(a)} onCheckedChange={() => toggleAllergen(a)} />
+                    {a}
+                  </label>
+                ))}
+              </div>
+              <label className="flex items-start gap-2 text-xs pt-1">
+                <Checkbox checked={prodAllergensConfirmed} onCheckedChange={(v) => setProdAllergensConfirmed(Boolean(v))} className="mt-0.5" />
+                <span>I&apos;ve confirmed the allergen information above is accurate for this item (tick even if none apply).</span>
+              </label>
             </div>
 
             <Separator />
