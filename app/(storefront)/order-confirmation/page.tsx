@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
+import { useCart } from '@/lib/cart-context';
 
 const ACCENT = '#c9a96e';
 
@@ -34,18 +35,26 @@ export default function OrderConfirmationPage() {
   const [order, setOrder] = useState<OrderData | null>(null);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(true);
+  const { clearLocalCart } = useCart();
 
   useEffect(() => {
     if (!orderNumber) { setLoading(false); setError(true); return; }
     fetch(`/api/v1/orders?orderNumber=${orderNumber}`)
       .then(r => r.json())
       .then(json => {
-        if (json.success) setOrder(json.data);
-        else setError(true);
+        if (json.success) {
+          setOrder(json.data);
+          // Reaching this page means Stripe already redirected from a
+          // successful payment (declines/cancellations go to cancel_url
+          // instead) — safe to clear the cart now that checkout is truly done.
+          clearLocalCart();
+        } else {
+          setError(true);
+        }
       })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
-  }, [orderNumber]);
+  }, [orderNumber, clearLocalCart]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white/30" /></div>;
