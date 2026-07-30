@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db';
 import type { OrderStatus } from '@prisma/client';
+import { sendOrderStatusUpdate } from '@/lib/notifications/email-service';
 
 /** Kitchen-visible order statuses (active queue) */
 const ACTIVE_STATUSES: OrderStatus[] = ['CONFIRMED', 'PREPARING', 'READY'];
@@ -148,6 +149,7 @@ export async function advanceKitchenStatus(
 ) {
   const order = await prisma.order.findFirst({
     where: { id: orderId, tenantId },
+    include: { customer: { select: { firstName: true, lastName: true, email: true } } },
   });
   if (!order) throw new Error('Order not found');
 
@@ -173,5 +175,28 @@ export async function advanceKitchenStatus(
     data.estimatedReadyAt = new Date(Date.now() + DEFAULT_PREP_MINUTES * 60000);
   }
 
-  return prisma.order.update({ where: { id: orderId }, data });
+  const updated = await prisma.order.update({ where: { id: orderId }, data });
+
+  // Notify the customer for real forward-progress milestones — this is the
+  // actual kitchen workflow (the "Mark Ready" button staff use), not the
+  // separate general admin/orders status route, so it must fire here too.
+  // bump_back is a staff correction, not a customer-facing milestone, so it
+  // deliberately doesn't notify.
+  if (action === 'start_preparing' || action === 'mark_ready') {
+    const customerEmail = order.customer?.email ?? order.guestEmail;
+    const customerName = order.customer
+      ? `${order.customer.firstName ?? ''} ${order.customer.lastName ?? ''}`.trim()
+      : order.guestName ?? undefined;
+    if (customerEmail) {
+      sendOrderStatusUpdate({
+        orderNumber: order.orderNumber,
+        status: tx.newStatus,
+        total: Number(order.total),
+        customerEmail,
+        customerName,
+      }).catch(() => {});
+    }
+  }
+
+  return updated;
 }
