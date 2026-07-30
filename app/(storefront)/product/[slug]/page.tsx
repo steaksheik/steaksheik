@@ -113,8 +113,10 @@ export default async function ProductPage({
             {(() => {
               const meta = (product.metadata ?? {}) as { allergens?: string[]; dietary?: string[] };
               const dietary = Array.isArray(meta.dietary) ? meta.dietary : [];
-              const allergens = Array.isArray(meta.allergens) ? meta.allergens : [];
-              if (!dietary.length && !allergens.length) return null;
+              // Prefer the structured, admin-confirmed field; fall back to the
+              // legacy freeform metadata only for rows not yet backfilled.
+              const allergens = product.allergens?.length ? product.allergens : (meta.allergens ?? []);
+              if (!dietary.length && !allergens.length && !product.allergensConfirmed) return null;
               return (
                 <div className="mt-5">
                   {dietary.length > 0 && (
@@ -130,11 +132,10 @@ export default async function ProductPage({
                       ))}
                     </div>
                   )}
-                  {allergens.length > 0 && (
-                    <p className="mt-3 text-xs text-white/40">
-                      <span className="text-white/60">Allergens:</span> {allergens.join(', ')}
-                    </p>
-                  )}
+                  <p className="mt-3 text-xs text-white/40">
+                    <span className="text-white/60">Allergens:</span>{' '}
+                    {allergens.length > 0 ? allergens.join(', ') : 'None declared'}
+                  </p>
                 </div>
               );
             })()}
