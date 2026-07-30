@@ -156,10 +156,15 @@ export default function CheckoutPage() {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message);
-      clearLocalCart();
       if (json.data.sessionUrl) {
+        // Don't clear the cart yet — payment hasn't happened. If the card is
+        // declined or the customer backs out, they land back on this page
+        // with their cart intact instead of having to rebuild it. The cart
+        // is only cleared once they actually reach order-confirmation
+        // (Stripe's success_url) or the server confirms payment.
         window.location.href = json.data.sessionUrl;
       } else {
+        clearLocalCart();
         router.push(`/order-confirmation?orderNumber=${json.data.orderNumber}`);
       }
     } catch (e) {
