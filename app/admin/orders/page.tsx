@@ -87,8 +87,10 @@ export default function OrdersPage() {
   const [filter, setFilter] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [refunding, setRefunding] = useState<string | null>(null);
 
   const canWrite = hasPermission('ordering:orders:write');
+  const canRefund = hasPermission('ordering:orders:refund');
 
   const loadOrders = useCallback(async () => {
     setLoading(true);
@@ -130,6 +132,28 @@ export default function OrdersPage() {
   const nextStatus = (current: string) => {
     const idx = STATUS_FLOW.indexOf(current);
     return idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null;
+  };
+
+  const refundOrder = async (order: Order) => {
+    if (!confirm(`Refund ${fmt(order.total)} for order ${order.orderNumber}? This cannot be undone.`)) return;
+    setRefunding(order.id);
+    try {
+      const res = await fetch(`/api/v1/orders/${order.id}/refund`, {
+        method: 'POST',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success('Refund processed');
+        loadOrders();
+      } else {
+        toast.error(json.error?.message || 'Refund failed');
+      }
+    } catch {
+      toast.error('Refund failed');
+    }
+    setRefunding(null);
   };
 
   return (
@@ -236,9 +260,9 @@ export default function OrdersPage() {
                       </div>
                     </div>
                     {/* Status actions */}
-                    {canWrite && (next || order.status !== 'CANCELLED') && (
-                      <div className="flex gap-2 mt-4 pt-4 border-t">
-                        {next && (
+                    {((canWrite && (next || order.status !== 'CANCELLED')) || (canRefund && order.status !== 'REFUNDED' && order.payments.some(p => p.status === 'SUCCEEDED'))) && (
+                      <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
+                        {canWrite && next && (
                           <button
                             disabled={updating === order.id}
                             onClick={() => updateStatus(order.id, next)}
@@ -247,13 +271,22 @@ export default function OrdersPage() {
                             {updating === order.id ? 'Updating…' : `Mark as ${next}`}
                           </button>
                         )}
-                        {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
+                        {canWrite && order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
                           <button
                             disabled={updating === order.id}
                             onClick={() => updateStatus(order.id, 'CANCELLED')}
                             className="rounded-md border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50"
                           >
                             Cancel Order
+                          </button>
+                        )}
+                        {canRefund && order.status !== 'REFUNDED' && order.payments.some(p => p.status === 'SUCCEEDED') && (
+                          <button
+                            disabled={refunding === order.id}
+                            onClick={() => refundOrder(order)}
+                            className="rounded-md border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50"
+                          >
+                            {refunding === order.id ? 'Refunding…' : `Refund ${fmt(order.total)}`}
                           </button>
                         )}
                       </div>
