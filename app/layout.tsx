@@ -19,6 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: 'The Steak Sheikh',
   description: 'Premium halal steaks, signature burgers and sides — crafted with passion and delivered to your door.',
+  alternates: { canonical: siteUrl },
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
