@@ -2,25 +2,10 @@ import { NextRequest } from 'next/server';
 import { withRoute } from '@/lib/api/route';
 import { ok, fail } from '@/lib/api/response';
 import { prisma } from '@/lib/db';
-import { cookies } from 'next/headers';
 import { z } from 'zod';
+import { getCustomerSession } from '@/lib/auth/customer-session';
 
 export const dynamic = 'force-dynamic';
-
-const CUSTOMER_SESSION_COOKIE = 'dk_customer_session';
-
-async function getCustomerFromSession() {
-  const cookieStore = await cookies();
-  const raw = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
-  if (!raw) return null;
-  try {
-    const data = JSON.parse(Buffer.from(raw, 'base64').toString());
-    if (data.exp < Date.now()) return null;
-    return data as { customerId: string; tenantId: string };
-  } catch {
-    return null;
-  }
-}
 
 const addressSchema = z.object({
   label: z.string().default('Home'),
@@ -38,7 +23,7 @@ const addressSchema = z.object({
 
 /** GET /api/v1/customers/addresses — list addresses */
 export const GET = withRoute(async () => {
-  const session = await getCustomerFromSession();
+  const session = await getCustomerSession();
   if (!session) return fail('NOT_AUTHENTICATED', 'Please log in', { status: 401 });
 
   const addresses = await prisma.customerAddress.findMany({
@@ -51,7 +36,7 @@ export const GET = withRoute(async () => {
 
 /** POST /api/v1/customers/addresses — add address */
 export const POST = withRoute(async (req: NextRequest) => {
-  const session = await getCustomerFromSession();
+  const session = await getCustomerSession();
   if (!session) return fail('NOT_AUTHENTICATED', 'Please log in', { status: 401 });
 
   const body = addressSchema.parse(await req.json());
