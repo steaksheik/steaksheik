@@ -43,6 +43,7 @@ export const PERMISSIONS: { resource: string; action: string; description: strin
   { resource: 'ordering:orders', action: 'read', description: 'View orders' },
   { resource: 'ordering:orders', action: 'write', description: 'Update order status' },
   { resource: 'ordering:orders', action: 'delete', description: 'Cancel/delete orders' },
+  { resource: 'ordering:orders', action: 'refund', description: 'Issue payment refunds' },
   { resource: 'ordering:customers', action: 'read', description: 'View customers' },
   { resource: 'ordering:customers', action: 'write', description: 'Update customers' },
   // Kitchen
@@ -178,6 +179,8 @@ export const DEFAULT_CONFIGURATION: ConfigDefault[] = [
   { module: 'notifications', key: 'emailEnabled', value: false, type: 'BOOLEAN', isPublic: false, description: 'Email notifications enabled' },
   { module: 'notifications', key: 'smsEnabled', value: false, type: 'BOOLEAN', isPublic: false, description: 'SMS notifications enabled' },
   { module: 'notifications', key: 'pushEnabled', value: false, type: 'BOOLEAN', isPublic: false, description: 'Push notifications enabled' },
+  // delivery
+  { module: 'delivery', key: 'allowedPostcodePrefixes', value: [], type: 'JSON', isPublic: false, description: 'UK postcode outward-code prefixes deliverable to (e.g. ["SW1","E14"]) — empty allows any valid-format postcode' },
   // services (active plugin selections)
   { module: 'services', key: 'emailProvider', value: 'console', type: 'STRING', isPublic: false, description: 'Active email provider' },
   { module: 'services', key: 'smsProvider', value: 'console', type: 'STRING', isPublic: false, description: 'Active SMS provider' },
