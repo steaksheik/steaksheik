@@ -1,10 +1,38 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { getDefaultTenant, getBrand, getProductBySlug, formatPrice } from '@/lib/storefront';
+import { getSiteUrl, jsonLdScriptProps } from '@/lib/seo';
 import { ChevronLeft, Flame } from 'lucide-react';
 import { ProductConfigurator } from './product-configurator';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string };
+}): Promise<Metadata> {
+  const tenant = await getDefaultTenant();
+  const product = await getProductBySlug(tenant.id, params.slug);
+  if (!product) return {};
+
+  const siteUrl = getSiteUrl();
+  const description =
+    product.shortDescription || product.description || `Order ${product.name} online from The Steak Sheikh — delivery or collection.`;
+  const image = product.images[0]?.url;
+
+  return {
+    title: `${product.name} | The Steak Sheikh`,
+    description,
+    alternates: { canonical: `${siteUrl}/product/${product.slug}` },
+    openGraph: {
+      title: product.name,
+      description,
+      images: image ? [image] : undefined,
+    },
+  };
+}
 
 export default async function ProductPage({
   params,
@@ -44,8 +72,28 @@ export default async function ProductPage({
     })),
   }));
 
+  const siteUrl = getSiteUrl();
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.name,
+    description: product.shortDescription || product.description || undefined,
+    image: product.images[0]?.url ? [product.images[0].url] : undefined,
+    url: `${siteUrl}/product/${product.slug}`,
+    offers: {
+      '@type': 'Offer',
+      url: `${siteUrl}/product/${product.slug}`,
+      priceCurrency: product.currency,
+      price: Number(product.basePrice).toFixed(2),
+      availability: product.isAvailable
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/OutOfStock',
+    },
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
+      <script {...jsonLdScriptProps(productJsonLd)} />
       {/* Breadcrumb */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
         <div className="flex items-center gap-2 text-sm text-white/40">
