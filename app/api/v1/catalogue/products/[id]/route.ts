@@ -6,6 +6,7 @@ import { requirePermission } from '@/lib/auth/context';
 import { prisma } from '@/lib/db';
 import { Errors } from '@/lib/api/errors';
 import { auditLog } from '@/lib/audit/service';
+import { ALLERGENS } from '@/lib/allergens';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,8 @@ const updateSchema = z.object({
   sortOrder: z.number().int().optional(),
   nutritionalInfo: z.record(z.unknown()).optional().nullable(),
   metadata: z.record(z.unknown()).optional().nullable(),
+  allergens: z.array(z.enum(ALLERGENS)).optional(),
+  allergensConfirmed: z.boolean().optional(),
 });
 
 /** PUT /api/v1/catalogue/products/:id */
@@ -62,6 +65,17 @@ export const PUT = withRoute(async (req: NextRequest, { params }) => {
 
   const before = await prisma.product.findFirst({ where: { id, tenantId: ctx.tenantId } });
   if (!before) throw Errors.notFound('Product not found');
+
+  // Natasha's Law: check the resulting merged state, not just this request's
+  // fields — a request that only changes the price on an already-published
+  // item must not be able to sneak allergensConfirmed back to false, and a
+  // request that publishes an item with no allergen data of its own (nor
+  // previously confirmed) must be blocked.
+  const resultingStatus = body.status ?? before.status;
+  const resultingConfirmed = body.allergensConfirmed ?? before.allergensConfirmed;
+  if (resultingStatus === 'PUBLISHED' && !resultingConfirmed) {
+    throw Errors.validation('Allergen information must be confirmed before this item can be published');
+  }
 
   const data: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(body)) {
