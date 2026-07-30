@@ -1,11 +1,16 @@
+import { cache } from 'react';
 import { prisma } from '@/lib/db';
 
-/** Resolve the default tenant for storefront pages. */
-export async function getDefaultTenant() {
+/**
+ * Resolve the default tenant for storefront pages. Wrapped in React's
+ * request-scoped cache() since both generateMetadata() and the page body
+ * call this independently — without it every page would hit the DB twice.
+ */
+export const getDefaultTenant = cache(async () => {
   const tenant = await prisma.tenant.findFirst({ where: { slug: 'default' } });
   if (!tenant) throw new Error('Default tenant not found');
   return tenant;
-}
+});
 
 /** Fetch brand + theme for storefront. */
 export async function getBrand(tenantId: string) {
@@ -160,12 +165,17 @@ export async function getPublicAnalyticsConfig(tenantId: string): Promise<Public
 }
 
 /** Fetch all active categories with product count. */
-export async function getCategories(tenantId: string) {
+export const getCategories = cache(async (tenantId: string) => {
   return prisma.category.findMany({
     where: { tenantId, status: 'ACTIVE' },
     orderBy: { sortOrder: 'asc' },
     include: { _count: { select: { products: { where: { status: 'PUBLISHED' } } } } },
   });
+});
+
+/** Fetch the tenant's public contact/address details, used for storefront structured data. */
+export async function getContactInfo(tenantId: string) {
+  return prisma.contactInfo.findUnique({ where: { tenantId } });
 }
 
 export interface FeaturedSectionConfig {
@@ -235,7 +245,7 @@ export async function getProducts(tenantId: string, categorySlug?: string) {
 }
 
 /** Fetch a single product by slug with full details. */
-export async function getProductBySlug(tenantId: string, slug: string) {
+export const getProductBySlug = cache(async (tenantId: string, slug: string) => {
   return prisma.product.findFirst({
     where: { tenantId, slug, status: 'PUBLISHED' },
     include: {
@@ -248,7 +258,7 @@ export async function getProductBySlug(tenantId: string, slug: string) {
       },
     },
   });
-}
+});
 
 /** Format price in GBP. */
 export function formatPrice(price: number | { toNumber?: () => number }, currency = 'GBP'): string {
