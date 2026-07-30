@@ -1,9 +1,33 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { getDefaultTenant, getBrand, getCategories, getProducts, formatPrice } from '@/lib/storefront';
+import { getSiteUrl } from '@/lib/seo';
 import { Flame } from 'lucide-react';
 import { MenuCategoryFilter } from './menu-filter';
 
 export const dynamic = 'force-dynamic';
+
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: { category?: string };
+}): Promise<Metadata> {
+  const tenant = await getDefaultTenant();
+  const categories = await getCategories(tenant.id);
+  const active = categories.find((c) => c.slug === searchParams.category);
+  const siteUrl = getSiteUrl();
+
+  return {
+    title: active ? `${active.name} | The Steak Sheikh Menu` : 'Menu | The Steak Sheikh',
+    description: active
+      ? `Order ${active.name} online from The Steak Sheikh — halal steaks, burgers and sides for delivery or collection.`
+      : 'Browse the full Steak Sheikh menu — halal steaks, signature burgers and sides. Order online for delivery or collection.',
+    // Category filtering happens client-side off the same URL family — point
+    // every variant at the canonical /menu so Google consolidates them
+    // instead of treating each ?category= as a separate near-duplicate page.
+    alternates: { canonical: `${siteUrl}/menu` },
+  };
+}
 
 export default async function MenuPage({
   searchParams,
