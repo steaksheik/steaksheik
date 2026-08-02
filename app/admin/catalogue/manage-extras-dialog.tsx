@@ -64,12 +64,17 @@ export function ManageExtrasDialog({
   const load = useCallback(async () => {
     if (!productId) return;
     setLoading(true);
+    setGroups([]);
     try {
       const res = await fetch(`/api/v1/catalogue/products/${productId}`, { credentials: 'include', headers: authHeaders() });
       const data = await res.json();
-      setGroups(data.data?.product?.modifierGroups ?? []);
+      if (!data.success || !data.data?.product) {
+        toast.error(data.error?.message ?? 'Failed to load extras for this product');
+        return;
+      }
+      setGroups(data.data.product.modifierGroups ?? []);
     } catch {
-      toast.error('Failed to load extras');
+      toast.error('Failed to load extras — check your connection and try again');
     } finally {
       setLoading(false);
     }
