@@ -162,16 +162,31 @@ export function HomeClient({
     : { href: '/account/login?mode=register&redirect=%2Faccount%2Floyalty', label: 'Join Now' };
   const [nlName, setNlName] = useState('');
   const [nlEmail, setNlEmail] = useState('');
+  const [nlSubmitting, setNlSubmitting] = useState(false);
 
-  const submitNewsletter = (e: React.FormEvent) => {
+  const submitNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nlEmail.trim()) {
       toast.error('Please enter your email address');
       return;
     }
-    toast.success('Thanks for joining the family! We\u2019ll be in touch.');
-    setNlName('');
-    setNlEmail('');
+    setNlSubmitting(true);
+    try {
+      const res = await fetch('/api/v1/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: nlName.trim(), email: nlEmail.trim() }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message || 'Something went wrong');
+      toast.success('Thanks for joining the family! We\u2019ll be in touch.');
+      setNlName('');
+      setNlEmail('');
+    } catch (err) {
+      toast.error((err as Error).message || 'Failed to subscribe \u2014 please try again');
+    } finally {
+      setNlSubmitting(false);
+    }
   };
 
   return (
@@ -475,8 +490,13 @@ export function HomeClient({
               placeholder="Your email"
               className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
             />
-            <button type="submit" className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02]" style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}>
-              Join Now
+            <button
+              type="submit"
+              disabled={nlSubmitting}
+              className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02] disabled:opacity-60"
+              style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
+            >
+              {nlSubmitting ? 'Joining…' : 'Join Now'}
             </button>
           </form>
         </div>

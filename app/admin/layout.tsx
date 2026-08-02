@@ -26,6 +26,7 @@ Bell,
   Send,
   Images,
   Tag,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -43,6 +44,7 @@ const NAV_ITEMS = [
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3, permission: 'analytics:dashboard:read' },
   { label: 'Catalogue', href: '/admin/catalogue', icon: Package, permission: 'catalogue:categories:read' },
   { label: 'Customers', href: '/admin/customers', icon: Users, permission: null },
+  { label: 'Newsletter', href: '/admin/newsletter', icon: Mail, permission: 'ordering:customers:read' },
   { label: 'Notifications', href: '/admin/notifications', icon: Bell, permission: 'notifications:settings:read' },
       { label: 'Branding', href: '/admin/branding', icon: Palette, permission: 'branding:brand:read' },
   { label: 'Media Library', href: '/admin/media', icon: Images, permission: 'branding:assets:write' },

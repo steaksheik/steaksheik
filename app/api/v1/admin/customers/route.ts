@@ -8,14 +8,18 @@ import { auditLog } from '@/lib/audit/service';
 
 export const dynamic = 'force-dynamic';
 
-/** GET /api/v1/admin/customers — list all customers for the tenant */
+/** GET /api/v1/admin/customers[?source=newsletter] — list customers for the tenant, optionally filtered by contactSource */
 export const GET = withRoute(async (req) => {
   const auth = await requirePermission(req, 'ordering:customers:read');
+  const source = req.nextUrl.searchParams.get('source');
 
   const customers = await prisma.customer.findMany({
     // campaign_oneoff = an ad-hoc recipient added directly in a campaign send,
     // never saved as a visible/standing customer — keep them out of this list.
-    where: { tenantId: auth.tenantId, contactSource: { not: 'campaign_oneoff' } },
+    where: {
+      tenantId: auth.tenantId,
+      contactSource: source ? source : { not: 'campaign_oneoff' },
+    },
     select: {
       id: true,
       email: true,
