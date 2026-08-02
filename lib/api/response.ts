@@ -3,7 +3,22 @@ import { ZodError } from 'zod';
 import { ApiError } from '@/lib/api/errors';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
-import { Decimal } from '@prisma/client/runtime/library';
+
+/**
+ * Duck-typed Decimal detection instead of instanceof/constructor-name checks.
+ * Verified live: instanceof against an imported Decimal class failed in
+ * production — Next.js bundles each API route as a separate serverless
+ * function, so the Decimal class this file imports is not always the same
+ * module instance the Prisma query engine actually constructed the value
+ * with. Checking for decimal.js's characteristic methods (present on any
+ * Decimal instance regardless of which copy of the module created it) is
+ * unaffected by both minification and that module-duplication issue.
+ */
+function isDecimalLike(value: unknown): value is { toNumber(): number } {
+  if (typeof value !== 'object' || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return typeof v.toNumber === 'function' && typeof v.toFixed === 'function' && typeof v.dividedBy === 'function';
+}
 
 export interface PaginationMeta {
   cursor: string | null;
@@ -23,11 +38,7 @@ function sanitize(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === 'bigint') return value.toString();
   if (value instanceof Date) return value.toISOString();
-  // instanceof, not constructor.name — a string-name check silently breaks
-  // under production minification (constructor names get mangled), which
-  // let raw Decimal internals leak into API responses and render as "NaN"
-  // on the client instead of a number.
-  if (value instanceof Decimal) return value.toNumber();
+  if (isDecimalLike(value)) return (value as { toNumber(): number }).toNumber();
   if (Array.isArray(value)) return value.map(sanitize);
   if (typeof value === 'object') {
     const out: Record<string, unknown> = {};
