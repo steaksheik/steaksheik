@@ -26,6 +26,8 @@ export default function StoreLocationPage() {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ email: '', phone: '', address: '', city: '', postcode: '', country: 'GB' });
   const [coords, setCoords] = useState<{ latitude: number | null; longitude: number | null }>({ latitude: null, longitude: null });
+  const [radiusMiles, setRadiusMiles] = useState('');
+  const [radiusSaving, setRadiusSaving] = useState(false);
 
   const canRead = hasPermission('config:settings:read');
   const canWrite = hasPermission('config:settings:write');
@@ -34,9 +36,12 @@ export default function StoreLocationPage() {
     if (!canRead) { setLoading(false); return; }
     setLoading(true);
     try {
-      const res = await fetch('/api/v1/contact-info', { headers: authHeaders() });
-      if (res.ok) {
-        const json = await res.json();
+      const [contactRes, radiusRes] = await Promise.all([
+        fetch('/api/v1/contact-info', { headers: authHeaders() }),
+        fetch('/api/v1/config/delivery/radiusMiles', { headers: authHeaders() }),
+      ]);
+      if (contactRes.ok) {
+        const json = await contactRes.json();
         const c: ContactInfo | null = json.data?.contactInfo ?? null;
         if (c) {
           setForm({
@@ -45,6 +50,10 @@ export default function StoreLocationPage() {
           });
           setCoords({ latitude: c.latitude, longitude: c.longitude });
         }
+      }
+      if (radiusRes.ok) {
+        const json = await radiusRes.json();
+        if (typeof json.data?.value === 'number') setRadiusMiles(String(json.data.value));
       }
     } finally {
       setLoading(false);
@@ -77,6 +86,30 @@ export default function StoreLocationPage() {
       toast.error((e as Error).message || 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveRadius() {
+    const n = Number(radiusMiles);
+    if (!radiusMiles.trim() || !Number.isFinite(n) || n <= 0) {
+      toast.error('Enter a delivery radius greater than 0');
+      return;
+    }
+    setRadiusSaving(true);
+    try {
+      const res = await fetch('/api/v1/config/delivery/radiusMiles', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: n, type: 'NUMBER', isPublic: false }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message);
+      toast.success(`Delivery radius set to ${n} miles`);
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to save');
+    } finally {
+      setRadiusSaving(false);
     }
   }
 
@@ -146,6 +179,38 @@ export default function StoreLocationPage() {
               Save
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Delivery Radius</CardTitle>
+          <CardDescription>
+            Customers within this distance of the store address above can choose delivery. Requires the address to be geocoded — otherwise checkout falls back to the postcode allow-list.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-end gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-sm">Radius (miles)</Label>
+              <Input
+                type="number"
+                min="0.5"
+                step="0.5"
+                value={radiusMiles}
+                onChange={e => setRadiusMiles(e.target.value)}
+                disabled={!canWrite}
+                placeholder="e.g. 3"
+                className="w-32"
+              />
+            </div>
+            {canWrite && (
+              <Button onClick={saveRadius} disabled={radiusSaving} size="sm">
+                {radiusSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                Save
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
