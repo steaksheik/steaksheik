@@ -91,7 +91,7 @@ export function ProductConfigurator({
     return price;
   }, [selectedVariant, selectedModifiers, variants, modifierGroups, basePrice]);
 
-  if (variants.length === 0 && modifierGroups.length === 0) return null;
+  const hasOptions = variants.length > 0 || modifierGroups.length > 0;
 
   return (
     <div className="mt-8 space-y-8">
@@ -161,7 +161,7 @@ export function ProductConfigurator({
       ))}
 
       {/* Total + Add to order (placeholder) */}
-      <div className="pt-4 border-t border-white/10">
+      <div className={hasOptions ? 'pt-4 border-t border-white/10' : ''}>
         <div className="flex items-center justify-between mb-4">
           <span className="text-sm text-white/50">Total</span>
           <span className="text-2xl font-bold" style={{ color: accent }}>{formatPrice(totalPrice, currency)}</span>
