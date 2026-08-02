@@ -430,18 +430,18 @@ export function HomeClient({
               <p className="mt-2 text-xs text-white/50">&ndash; James R.</p>
             </div>
           </div>
-          <div className="relative overflow-hidden rounded-xl text-white min-h-[180px] flex items-center">
+          <Link href="/wagyu-journey" className="group relative overflow-hidden rounded-xl text-white min-h-[180px] flex items-center">
             <img src={IMG.tbone} alt="Our story" className="absolute inset-0 h-full w-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[#0a0a0a]/70 to-[#0a0a0a]" />
             <div className="relative z-10 ml-auto p-6 text-right">
-              <button onClick={() => soon('Our story video')} className="ml-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/70 hover:bg-white/10 transition-colors">
+              <div className="ml-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border-2 border-white/70 group-hover:bg-white/10 transition-colors">
                 <Play className="h-5 w-5 fill-white" />
-              </button>
+              </div>
               <h3 className="font-heading text-xl font-extrabold">OUR STORY</h3>
               <p className="mt-1 text-sm text-white/70">Passion for steak, perfected.</p>
-              <button onClick={() => soon('Our story video')} className="mt-2 text-[11px] font-bold uppercase tracking-wide" style={{ color: ACCENT }}>Watch Video</button>
+              <span className="mt-2 inline-block text-[11px] font-bold uppercase tracking-wide" style={{ color: ACCENT }}>Explore the Journey</span>
             </div>
-          </div>
+          </Link>
         </div>
       </section>
 
