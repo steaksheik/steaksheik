@@ -47,10 +47,12 @@ const ACCENT = '#c9a96e';
 export function StorefrontShell({
   brand,
   categories,
+  rewardsEnabled = true,
   children,
 }: {
   brand: BrandInfo | null;
   categories: NavCategory[];
+  rewardsEnabled?: boolean;
   children: React.ReactNode;
 }) {
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -162,9 +164,11 @@ export function StorefrontShell({
             <Link href="/#why" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
               Steak Guide
             </Link>
-            <Link href="/#rewards" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
-              Rewards
-            </Link>
+            {rewardsEnabled && (
+              <Link href="/#rewards" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
+                Rewards
+              </Link>
+            )}
             <Link href="/#story" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
               Our Story
             </Link>
@@ -208,7 +212,9 @@ export function StorefrontShell({
                 {c.name}
               </Link>
             ))}
-            <Link href="/#rewards" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm font-semibold uppercase tracking-wide text-white/80 hover:text-white">Rewards</Link>
+            {rewardsEnabled && (
+              <Link href="/#rewards" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm font-semibold uppercase tracking-wide text-white/80 hover:text-white">Rewards</Link>
+            )}
             <Link href="/#story" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm font-semibold uppercase tracking-wide text-white/80 hover:text-white">Our Story</Link>
             <Link
               href="/menu"
@@ -268,7 +274,9 @@ export function StorefrontShell({
               <ul className="space-y-2.5">
                 <li><Link href="/#story" className="text-sm text-white/50 hover:text-white transition-colors">Our Story</Link></li>
                 <li><Link href="/#why" className="text-sm text-white/50 hover:text-white transition-colors">Steak Guide</Link></li>
-                <li><Link href="/#rewards" className="text-sm text-white/50 hover:text-white transition-colors">Rewards</Link></li>
+                {rewardsEnabled && (
+                  <li><Link href="/#rewards" className="text-sm text-white/50 hover:text-white transition-colors">Rewards</Link></li>
+                )}
                 <li><Link href="/menu" className="text-sm text-white/50 hover:text-white transition-colors">Full Menu</Link></li>
               </ul>
             </div>

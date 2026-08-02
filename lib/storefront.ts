@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { prisma } from '@/lib/db';
+import { get as getConfig } from '@/lib/config/service';
 
 /**
  * Resolve the default tenant for storefront pages. Wrapped in React's
@@ -10,6 +11,18 @@ export const getDefaultTenant = cache(async () => {
   const tenant = await prisma.tenant.findFirst({ where: { slug: 'default' } });
   if (!tenant) throw new Error('Default tenant not found');
   return tenant;
+});
+
+/**
+ * Whether the Rewards/Loyalty feature should be shown on the storefront.
+ * Defaults to enabled (matches the app's prior always-on behaviour) when no
+ * admin override has been saved yet. Wrapped in cache() since the header
+ * nav, homepage section, and account nav all read this independently within
+ * the same request tree.
+ */
+export const getRewardsEnabled = cache(async (tenantId: string): Promise<boolean> => {
+  const value = await getConfig<boolean>(tenantId, 'features', 'rewardsEnabled');
+  return value ?? true;
 });
 
 /** Fetch brand + theme for storefront. */

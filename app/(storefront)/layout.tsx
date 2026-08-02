@@ -1,6 +1,6 @@
 import Script from 'next/script';
 import { cookies } from 'next/headers';
-import { getDefaultTenant, getBrand, getCategories, getPublicAnalyticsConfig } from '@/lib/storefront';
+import { getDefaultTenant, getBrand, getCategories, getPublicAnalyticsConfig, getRewardsEnabled } from '@/lib/storefront';
 import { StorefrontShell } from './storefront-shell';
 import { StorefrontProviders } from './storefront-providers';
 import { CookieConsentBanner } from './cookie-consent-banner';
@@ -14,6 +14,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
   const brand = await getBrand(tenant.id);
   const categories = await getCategories(tenant.id);
   const analyticsConfig = await getPublicAnalyticsConfig(tenant.id);
+  const rewardsEnabled = await getRewardsEnabled(tenant.id);
 
   const cookieStore = await cookies();
   const consentValue = cookieStore.get(CONSENT_COOKIE)?.value;
@@ -72,6 +73,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
         } : null,
       } : null}
       categories={categories.map(c => ({ name: c.name, slug: c.slug }))}
+      rewardsEnabled={rewardsEnabled}
     >
       {children}
     </StorefrontShell>

@@ -1,4 +1,4 @@
-import { getDefaultTenant, getBrand, getContactInfo, getFeaturedProducts, getFeaturedSectionConfig, getHero, getPromoCards, formatPrice } from '@/lib/storefront';
+import { getDefaultTenant, getBrand, getContactInfo, getFeaturedProducts, getFeaturedSectionConfig, getHero, getPromoCards, getRewardsEnabled, formatPrice } from '@/lib/storefront';
 import { getSiteUrl, jsonLdScriptProps } from '@/lib/seo';
 import { HomeClient, type StoreProduct } from './home-client';
 
@@ -6,12 +6,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
   const tenant = await getDefaultTenant();
-  const [brand, hero, featuredSection, promoCards, contactInfo] = await Promise.all([
+  const [brand, hero, featuredSection, promoCards, contactInfo, rewardsEnabled] = await Promise.all([
     getBrand(tenant.id),
     getHero(tenant.id),
     getFeaturedSectionConfig(tenant.id),
     getPromoCards(tenant.id),
     getContactInfo(tenant.id),
+    getRewardsEnabled(tenant.id),
   ]);
 
   const featuredProducts = featuredSection.enabled
@@ -58,6 +59,7 @@ export default async function HomePage() {
         featuredSubtitle={featuredSection.subtitle}
         hero={hero}
         promoCards={promoCards}
+        rewardsEnabled={rewardsEnabled}
       />
     </>
   );

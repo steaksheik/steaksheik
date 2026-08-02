@@ -147,6 +147,7 @@ export function HomeClient({
   featuredSubtitle = null,
   hero = null,
   promoCards = [],
+  rewardsEnabled = true,
 }: {
   brandName: string;
   featured: StoreProduct[];
@@ -154,6 +155,7 @@ export function HomeClient({
   featuredSubtitle?: string | null;
   hero?: HeroConfig | null;
   promoCards?: PromoCard[];
+  rewardsEnabled?: boolean;
 }) {
   const soon = (label: string) => toast.info(`${label} — coming soon`);
   const { customer } = useCustomer();
@@ -282,6 +284,7 @@ export function HomeClient({
       )}
 
       {/* ══ REWARDS ══ */}
+      {rewardsEnabled && (
       <section id="rewards" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 scroll-mt-20">
         <h2 className="font-heading text-2xl font-extrabold">EARN POINTS. GET REWARDED.</h2>
         <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_320px]">
@@ -319,6 +322,7 @@ export function HomeClient({
           </div>
         </div>
       </section>
+      )}
 
       {/* ══ FEATURED PRODUCTS ══ */}
       {featured.length > 0 && (

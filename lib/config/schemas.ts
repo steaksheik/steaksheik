@@ -25,6 +25,7 @@ const schemas: Record<string, z.ZodTypeAny> = {
   'services:smsProvider': z.string().min(1),
   'services:storageProvider': z.string().min(1),
   'services:paymentProvider': z.string().min(1),
+  'features:rewardsEnabled': z.boolean(),
 };
 
 export function getConfigSchema(module: string, key: string): z.ZodTypeAny {

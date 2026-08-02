@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { Loader2, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,6 +29,41 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState<string | null>(null);
 
   const canWrite = hasPermission('config:settings:write');
+
+  const [rewardsEnabled, setRewardsEnabled] = useState(true);
+  const [rewardsLoading, setRewardsLoading] = useState(true);
+  const [rewardsSaving, setRewardsSaving] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/v1/config/features/rewardsEnabled', { credentials: 'include', headers: authHeaders() })
+      .then(r => (r.ok ? r.json() : null))
+      .then(json => {
+        if (json?.success && typeof json.data?.value === 'boolean') setRewardsEnabled(json.data.value);
+      })
+      .catch(() => {})
+      .finally(() => setRewardsLoading(false));
+  }, [authHeaders]);
+
+  async function toggleRewards(next: boolean) {
+    setRewardsSaving(true);
+    setRewardsEnabled(next);
+    try {
+      const res = await fetch('/api/v1/config/features/rewardsEnabled', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({ value: next, type: 'BOOLEAN', isPublic: true }),
+      });
+      const data = await res.json();
+      if (data.success) toast.success(`Rewards ${next ? 'enabled' : 'disabled'}`);
+      else { toast.error(data.error?.message ?? 'Failed to save'); setRewardsEnabled(!next); }
+    } catch {
+      toast.error('Network error');
+      setRewardsEnabled(!next);
+    } finally {
+      setRewardsSaving(false);
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -96,6 +132,26 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-display font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-1">Platform configuration values.</p>
       </div>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base">Features</CardTitle>
+          <CardDescription>Turn optional storefront features on or off</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Label className="text-sm">Rewards</Label>
+              <p className="text-xs text-muted-foreground">Show the loyalty/rewards program on the storefront, in customer accounts, and in navigation</p>
+            </div>
+            {rewardsLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            ) : (
+              <Switch checked={rewardsEnabled} onCheckedChange={toggleRewards} disabled={!canWrite || rewardsSaving} />
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {Object.entries(grouped).map(([mod, items]) => (
         <Card key={mod} className="shadow-sm">
