@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { MediaPicker } from '@/components/admin/media-picker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ALLERGENS } from '@/lib/allergens';
+import { ManageExtrasDialog } from './manage-extras-dialog';
 import {
   Plus,
   Loader2,
@@ -31,6 +32,7 @@ import {
   GripVertical,
   Image as ImageIcon,
   RefreshCw,
+  SlidersHorizontal,
 } from 'lucide-react';
 
 interface Category {
@@ -135,6 +137,10 @@ export default function CataloguePage() {
   const [prodAllergens, setProdAllergens] = useState<string[]>([]);
   const [prodAllergensConfirmed, setProdAllergensConfirmed] = useState(false);
   const [prodSaving, setProdSaving] = useState(false);
+
+  // Extras (modifier groups) dialog
+  const [extrasOpen, setExtrasOpen] = useState(false);
+  const [extrasProduct, setExtrasProduct] = useState<Product | null>(null);
 
   const canWrite = hasPermission('catalogue:categories:write');
   const canDeleteCat = hasPermission('catalogue:categories:delete');
@@ -463,6 +469,11 @@ export default function CataloguePage() {
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                         )}
+                        {canWriteProduct && (
+                          <Button variant="ghost" size="icon" className="h-7 w-7" title="Manage Extras" onClick={() => { setExtrasProduct(prod); setExtrasOpen(true); }}>
+                            <SlidersHorizontal className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         {canDeleteProduct && (
                           <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deleteProduct(prod.id)}>
                             <Trash2 className="h-3.5 w-3.5" />
@@ -636,6 +647,15 @@ export default function CataloguePage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ManageExtrasDialog
+        open={extrasOpen}
+        onOpenChange={setExtrasOpen}
+        productId={extrasProduct?.id ?? null}
+        productName={extrasProduct?.name ?? ''}
+        authHeaders={authHeaders}
+        canWrite={canWriteProduct}
+      />
     </div>
   );
 }
