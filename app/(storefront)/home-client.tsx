@@ -515,7 +515,7 @@ export function HomeClient({
               </div>
             </div>
             <div className="relative min-h-[200px]">
-              <img src={IMG.chef} alt="Our head chef" className="absolute inset-0 h-full w-full object-cover" />
+              <img src="/sonny-steak-sheikh.jpg" alt="Sonny, The Steak Sheikh — Executive Chef & Founder" className="absolute inset-0 h-full w-full object-cover object-top" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] to-transparent" />
             </div>
           </div>

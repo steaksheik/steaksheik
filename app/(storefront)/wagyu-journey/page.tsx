@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { getSiteUrl } from '@/lib/seo';
 import { WagyuJourney } from '@/components/sections/WagyuJourney';
+
+const ACCENT = '#c9a96e';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,10 +65,94 @@ function JourneyHero() {
   );
 }
 
+/**
+ * Sonny's founder story — the personal introduction that sets up the journey.
+ * Portrait on the right, "Steak Perfection" letter on the left.
+ */
+function SonnyStory() {
+  return (
+    <section className="relative overflow-hidden bg-[#0a0a0a] py-16 text-white sm:py-24">
+      <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
+        {/* Letter */}
+        <div className="order-2 lg:order-1">
+          <p
+            className="font-heading text-sm uppercase tracking-[0.4em]"
+            style={{ color: ACCENT }}
+          >
+            Simply Irresistible
+          </p>
+          <h2 className="mt-4 font-accent text-6xl font-medium uppercase leading-[0.95] tracking-tight sm:text-7xl">
+            Steak
+            <br />
+            Perfection
+          </h2>
+
+          <div className="mt-8 space-y-4 text-base leading-relaxed text-white/70 sm:text-lg">
+            <p>
+              Welcome to The Steak Sheikh, the home of the finest hand-selected,
+              free-range, organic grass-fed beef and meats served in the British
+              Isles, cooked on lava rocks in a cooking tradition as old as time
+              itself.
+            </p>
+            <p>
+              I personally have travelled the world to source for you the
+              unrivalled Wagyu and beef cuts on offer to you today.
+            </p>
+            <p>
+              My love for the world&apos;s finest beef is shared by my dedicated
+              team of passionate chefs who will carefully hand-select your chosen
+              steak, and by our enthusiastic front-of-house team, who are here to
+              help you get the very best from the rock and your personal Steak
+              Sheikh adventure.
+            </p>
+            <p>
+              My late father&apos;s mantra drummed into me four decades ago when I
+              started out as a kitchen hand was and remains to this day:
+            </p>
+            <p
+              className="font-accent text-2xl italic sm:text-3xl"
+              style={{ color: ACCENT }}
+            >
+              &lsquo;Made with Love&rsquo;
+            </p>
+            <p>Welcome to The Steak Sheikh, Welcome to Steak.</p>
+          </div>
+
+          <div className="mt-8">
+            <p className="font-accent text-2xl font-semibold italic text-white">
+              Sonny
+            </p>
+            <p className="mt-1 text-sm text-white/60">(The Steak Sheikh)</p>
+            <p className="text-sm text-white/60">Executive Chef &amp; Founder</p>
+          </div>
+        </div>
+
+        {/* Portrait */}
+        <div className="order-1 lg:order-2">
+          <div
+            className="relative mx-auto aspect-[3/4] w-full max-w-md overflow-hidden rounded-xl lg:max-w-none"
+            style={{ boxShadow: '0 30px 80px -30px rgba(0,0,0,0.9)' }}
+          >
+            <Image
+              src="/sonny-steak-sheikh.jpg"
+              alt="Sonny, The Steak Sheikh — Executive Chef & Founder"
+              fill
+              sizes="(max-width: 1024px) 90vw, 45vw"
+              className="object-cover object-top"
+              priority
+            />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function WagyuJourneyPage() {
   return (
     <main className="bg-[#0a0a0a]">
       <JourneyHero />
+      <SonnyStory />
       <WagyuJourney />
     </main>
   );

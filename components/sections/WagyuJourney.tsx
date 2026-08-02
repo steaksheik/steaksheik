@@ -21,6 +21,12 @@ export interface JourneyStep {
   type: 'image' | 'video';
   /** Alt text for images (required for accessibility). */
   alt?: string;
+  /**
+   * CSS object-position for the media (e.g. 'center top', '30% center').
+   * Used to keep the important subject (a face, a sign) in frame when the
+   * portrait/landscape asset is cropped by object-cover. Defaults to 'center'.
+   */
+  objectPosition?: string;
 }
 
 /**
@@ -37,22 +43,25 @@ export const WAGYU_STEPS: JourneyStep[] = [
     src: '/wagyu/journey-1.jpg',
     type: 'image',
     alt: 'Sonny arriving in Sydney, Australia at the start of the Wagyu journey',
+    objectPosition: '35% center',
   },
   {
     index: 2,
     quote: 'Dressed and ready to audit a $1M Wagyu slaughter.',
     caption: 'Behind the doors',
-    src: '/wagyu/journey-2.jpg',
+    src: '/wagyu/journey-3.jpg',
     type: 'image',
     alt: 'Sonny in full hygiene protective gear before entering the facility',
+    objectPosition: 'center top',
   },
   {
     index: 3,
     quote: 'A $1M premium Wagyu slaughter — inspected first-hand.',
     caption: 'No shortcuts',
-    src: '/wagyu/journey-3.jpg',
+    src: '/wagyu/journey-3b.jpg',
     type: 'image',
     alt: 'Premium Wagyu carcasses hanging in the audited slaughterhouse',
+    objectPosition: 'center',
   },
   {
     index: 4,
@@ -125,6 +134,7 @@ function StepMedia({ step }: { step: JourneyStep }) {
           fill
           sizes="(max-width: 1024px) 100vw, 55vw"
           className="object-cover"
+          style={{ objectPosition: step.objectPosition ?? 'center' }}
           priority={step.index === 1}
           onError={() => setErrored(true)}
         />
