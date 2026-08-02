@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { HeroConfig, PromoCard } from '@/lib/storefront';
@@ -442,6 +443,55 @@ export function HomeClient({
             </div>
           </div>
         </div>
+      </section>
+
+      {/* ══ WAGYU JOURNEY TEASER ══ */}
+      <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+        <Link
+          href="/wagyu-journey"
+          className="group relative block overflow-hidden rounded-xl bg-[#0a0a0a] text-white"
+        >
+          {/* Atmospheric preview collage */}
+          <div className="absolute inset-0">
+            <div className="grid h-full grid-cols-3">
+              {[
+                { src: '/wagyu/journey-5.jpg', alt: 'Grass-fed cattle in an open field' },
+                { src: '/wagyu/journey-4.jpg', alt: 'A5 full-blood Wagyu marbling close-up' },
+                { src: '/wagyu/journey-1.jpg', alt: 'The start of the Wagyu journey' },
+              ].map((img) => (
+                <div key={img.src} className="relative h-full">
+                  <Image
+                    src={img.src}
+                    alt={img.alt}
+                    fill
+                    sizes="(max-width: 1024px) 34vw, 420px"
+                    className="object-cover opacity-45 transition-transform duration-slow group-hover:scale-105"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/85 to-[#0a0a0a]/70" />
+          </div>
+
+          <div className="relative z-10 flex min-h-[360px] flex-col justify-center gap-4 p-8 sm:p-12 lg:max-w-2xl">
+            <span className="font-heading text-xs uppercase tracking-[0.35em]" style={{ color: ACCENT }}>
+              A Steak Sheikh Story
+            </span>
+            <h2 className="font-heading text-4xl font-extrabold uppercase leading-none tracking-tight sm:text-5xl lg:text-6xl">
+              The Ten Thousand<br />Mile Journey
+            </h2>
+            <p className="max-w-md font-accent text-lg text-white/75 sm:text-xl">
+              Sonny travelled to the other side of the world to find the very best Wagyu. Just for you.
+            </p>
+            <span
+              className="mt-3 inline-flex w-fit items-center gap-2 rounded-md px-6 py-3 text-[12px] font-bold uppercase tracking-wide transition-transform group-hover:scale-[1.03]"
+              style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
+            >
+              Explore the Journey
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          </div>
+        </Link>
       </section>
 
       {/* ══ VALUES ══ */}

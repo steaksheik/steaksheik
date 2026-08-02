@@ -164,6 +164,9 @@ export function StorefrontShell({
             <Link href="/#why" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
               Steak Guide
             </Link>
+            <Link href="/wagyu-journey" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
+              Our Journey
+            </Link>
             {rewardsEnabled && (
               <Link href="/#rewards" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
                 Rewards
@@ -215,6 +218,7 @@ export function StorefrontShell({
             {rewardsEnabled && (
               <Link href="/#rewards" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm font-semibold uppercase tracking-wide text-white/80 hover:text-white">Rewards</Link>
             )}
+            <Link href="/wagyu-journey" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm font-semibold uppercase tracking-wide text-white/80 hover:text-white">Our Journey</Link>
             <Link href="/#story" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm font-semibold uppercase tracking-wide text-white/80 hover:text-white">Our Story</Link>
             <Link
               href="/menu"
@@ -273,6 +277,7 @@ export function StorefrontShell({
               <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-4">Information</h4>
               <ul className="space-y-2.5">
                 <li><Link href="/#story" className="text-sm text-white/50 hover:text-white transition-colors">Our Story</Link></li>
+                <li><Link href="/wagyu-journey" className="text-sm text-white/50 hover:text-white transition-colors">Our Journey</Link></li>
                 <li><Link href="/#why" className="text-sm text-white/50 hover:text-white transition-colors">Steak Guide</Link></li>
                 {rewardsEnabled && (
                   <li><Link href="/#rewards" className="text-sm text-white/50 hover:text-white transition-colors">Rewards</Link></li>
