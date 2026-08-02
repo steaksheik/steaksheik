@@ -126,7 +126,14 @@ export default function CustomerLoginPage() {
           />
         </div>
         <div>
-          <label className="block text-xs uppercase tracking-wider text-neutral-400 mb-1.5">Password</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="block text-xs uppercase tracking-wider text-neutral-400">Password</label>
+            {mode === 'login' && (
+              <Link href="/account/forgot-password" className="text-xs text-neutral-400 hover:text-white transition-colors">
+                Forgot password?
+              </Link>
+            )}
+          </div>
           <div className="relative">
             <input
               type={showPwd ? 'text' : 'password'}

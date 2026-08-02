@@ -8,6 +8,9 @@ import { User, ShoppingBag, MapPin, Award, LogOut, Loader2 } from 'lucide-react'
 
 const ACCENT = '#c9a96e';
 
+// Account routes reachable without being logged in
+const PUBLIC_ACCOUNT_PATHS = ['/account/login', '/account/forgot-password', '/account/reset-password'];
+
 export default function AccountLayoutClient({ rewardsEnabled, children }: { rewardsEnabled: boolean; children: React.ReactNode }) {
   const { customer, loading, logout } = useCustomer();
   const router = useRouter();
@@ -21,13 +24,13 @@ export default function AccountLayoutClient({ rewardsEnabled, children }: { rewa
   ];
 
   useEffect(() => {
-    if (!loading && !customer) {
+    if (!loading && !customer && !PUBLIC_ACCOUNT_PATHS.includes(pathname)) {
       router.replace('/account/login');
     }
-  }, [loading, customer, router]);
+  }, [loading, customer, pathname, router]);
 
-  // Don't apply account layout to login page
-  if (pathname === '/account/login') {
+  // Public pages (login, forgot/reset password) don't get the authenticated shell
+  if (PUBLIC_ACCOUNT_PATHS.includes(pathname)) {
     return <>{children}</>;
   }
 
