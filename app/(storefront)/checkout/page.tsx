@@ -313,6 +313,11 @@ export default function CheckoutPage() {
                     <span className="text-white/80">{item.quantity}x</span>{' '}
                     <span>{item.productName}</span>
                     {item.variantName && <span className="text-white/40 text-xs"> ({item.variantName})</span>}
+                    {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
+                      <div className="text-white/40 text-xs">
+                        {(item.modifiers as Array<{ name: string }>).map((m) => m.name).join(', ')}
+                      </div>
+                    )}
                   </div>
                   <span className="font-bold">{fmt(item.lineTotal)}</span>
                 </div>

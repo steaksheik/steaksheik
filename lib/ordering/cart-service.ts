@@ -31,6 +31,15 @@ export async function getOrCreateCart(tenantId: string, token?: string, customer
   });
 }
 
+function modifiersKey(modifiers: unknown): string {
+  if (!Array.isArray(modifiers) || modifiers.length === 0) return '';
+  return modifiers
+    .map((m) => (m as { modifierId?: string })?.modifierId ?? '')
+    .filter(Boolean)
+    .sort()
+    .join(',');
+}
+
 export async function addItem(
   cartId: string,
   productId: string,
@@ -40,14 +49,18 @@ export async function addItem(
   modifiers?: unknown,
   notes?: string
 ) {
-  // check if same product+variant already in cart
-  const existing = await prisma.cartItem.findFirst({
+  // Check if the same product+variant+modifier-selection is already in the
+  // cart — a different set of extras must become its own line item, not
+  // silently merge into (and hide behind) an unrelated selection.
+  const candidates = await prisma.cartItem.findMany({
     where: {
       cartId,
       productId,
       variantId: variantId || null,
     },
   });
+  const key = modifiersKey(modifiers);
+  const existing = candidates.find((c) => modifiersKey(c.modifiers) === key);
   if (existing) {
     return prisma.cartItem.update({
       where: { id: existing.id },

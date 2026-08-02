@@ -35,7 +35,7 @@ export const POST = withRoute(async (req: NextRequest) => {
   // resolve price from product/variant
   const product = await prisma.product.findFirst({
     where: { id: body.productId, tenantId, status: 'PUBLISHED' },
-    include: { variants: true },
+    include: { variants: true, modifierGroups: { include: { modifiers: true } } },
   });
   if (!product) return fail('NOT_FOUND', 'Product not found', { status: 404 });
 
@@ -46,8 +46,30 @@ export const POST = withRoute(async (req: NextRequest) => {
     unitPrice = Number(variant.price);
   }
 
+  // Resolve the client's selected {groupId: modifierId[]} map against the
+  // product's actual modifiers server-side, so the stored cart line carries
+  // real names/prices (not just opaque IDs) and the extras' cost is folded
+  // into unitPrice rather than silently dropped.
+  let enrichedModifiers: Array<{ groupId: string; groupName: string; modifierId: string; name: string; priceAdjustment: number }> | undefined;
+  if (body.modifiers && typeof body.modifiers === 'object') {
+    const selections = body.modifiers as Record<string, string[]>;
+    const resolved: typeof enrichedModifiers = [];
+    for (const [groupId, modifierIds] of Object.entries(selections)) {
+      const group = product.modifierGroups.find((g) => g.id === groupId);
+      if (!group || !Array.isArray(modifierIds)) continue;
+      for (const modifierId of modifierIds) {
+        const modifier = group.modifiers.find((m) => m.id === modifierId);
+        if (!modifier) continue;
+        const priceAdjustment = Number(modifier.priceAdjustment);
+        unitPrice += priceAdjustment;
+        resolved.push({ groupId: group.id, groupName: group.name, modifierId: modifier.id, name: modifier.name, priceAdjustment });
+      }
+    }
+    if (resolved.length > 0) enrichedModifiers = resolved;
+  }
+
   const cart = await getOrCreateCart(tenantId, body.token);
-  await addItem(cart.id, body.productId, body.variantId || null, unitPrice, body.quantity, body.modifiers, body.notes);
+  await addItem(cart.id, body.productId, body.variantId || null, unitPrice, body.quantity, enrichedModifiers, body.notes);
   const summary = await getCartSummary(tenantId, cart.token);
   return ok(summary, { status: 201 });
 }, { rateLimit: 'ipUnauth' });

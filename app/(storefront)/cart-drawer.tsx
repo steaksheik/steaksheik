@@ -70,6 +70,11 @@ export function CartDrawer() {
                 <div className="flex-1 min-w-0">
                   <Link href={`/product/${item.productSlug}`} onClick={closeDrawer} className="text-sm font-bold hover:underline line-clamp-1">{item.productName}</Link>
                   {item.variantName && <p className="text-xs text-white/40">{item.variantName}</p>}
+                  {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
+                    <p className="text-xs text-white/40">
+                      {(item.modifiers as Array<{ name: string }>).map((m) => m.name).join(', ')}
+                    </p>
+                  )}
                   <p className="text-sm mt-1" style={{ color: ACCENT }}>{fmt(item.unitPrice)}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <button
