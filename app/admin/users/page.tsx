@@ -122,23 +122,19 @@ export default function UsersPage() {
 
   // ── Add user ──
   const [addUserOpen, setAddUserOpen] = useState(false);
-  const [userForm, setUserForm] = useState({ email: '', password: '', firstName: '', lastName: '' });
+  const [userForm, setUserForm] = useState({ email: '', firstName: '', lastName: '' });
   const [userRoleIds, setUserRoleIds] = useState<Set<string>>(new Set());
   const [savingUser, setSavingUser] = useState(false);
 
   const openAddUser = () => {
-    setUserForm({ email: '', password: '', firstName: '', lastName: '' });
+    setUserForm({ email: '', firstName: '', lastName: '' });
     setUserRoleIds(new Set());
     setAddUserOpen(true);
   };
 
   const createUser = async () => {
-    if (!userForm.email.trim() || !userForm.password || !userForm.firstName.trim() || !userForm.lastName.trim()) {
+    if (!userForm.email.trim() || !userForm.firstName.trim() || !userForm.lastName.trim()) {
       toast.error('Please fill in all fields');
-      return;
-    }
-    if (userForm.password.length < 8) {
-      toast.error('Password must be at least 8 characters');
       return;
     }
     setSavingUser(true);
@@ -151,7 +147,7 @@ export default function UsersPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success('User created');
+        toast.success('Invite sent');
         setAddUserOpen(false);
         load();
       } else {
@@ -438,7 +434,7 @@ export default function UsersPage() {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Add User</DialogTitle>
-            <DialogDescription>Create a new admin/staff account and assign roles.</DialogDescription>
+            <DialogDescription>Create a new admin/staff account and assign roles. An invite email will be sent so they can set their own password.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="grid grid-cols-2 gap-3">
@@ -454,15 +450,6 @@ export default function UsersPage() {
             <div className="space-y-1.5">
               <Label className="text-xs">Email</Label>
               <Input type="email" value={userForm.email} onChange={(e) => setUserForm((p) => ({ ...p, email: e.target.value }))} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Password</Label>
-              <Input
-                type="password"
-                value={userForm.password}
-                onChange={(e) => setUserForm((p) => ({ ...p, password: e.target.value }))}
-                placeholder="Min. 8 characters"
-              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Roles</Label>
@@ -492,7 +479,7 @@ export default function UsersPage() {
           <DialogFooter>
             <Button onClick={createUser} disabled={savingUser}>
               {savingUser && <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />}
-              Create User
+              Send Invite
             </Button>
           </DialogFooter>
         </DialogContent>

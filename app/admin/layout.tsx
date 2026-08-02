@@ -37,6 +37,9 @@ import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
 import { AuthCtx, type AdminUser } from '@/lib/admin-auth-context';
 
+// Admin routes reachable without a session — bypass the authenticated shell entirely
+const PUBLIC_ADMIN_PATHS = ['/admin/login', '/admin/forgot-password', '/admin/reset-password'];
+
 // ── Nav items ───────────────────────────────────────────
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: null },
@@ -194,7 +197,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         } else {
           setUser(null);
           setPermissions([]);
-          if (pathname !== '/admin/login') router.replace('/admin/login');
+          if (!PUBLIC_ADMIN_PATHS.includes(pathname)) router.replace('/admin/login');
         }
       })
       .catch(() => {
@@ -241,8 +244,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     [csrfToken]
   );
 
-  // Login page bypass
-  if (pathname === '/admin/login') return <>{children}</>;
+  // Public admin pages bypass the authenticated shell entirely
+  if (PUBLIC_ADMIN_PATHS.includes(pathname)) return <>{children}</>;
 
   if (loading) {
     return (

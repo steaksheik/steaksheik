@@ -9,6 +9,11 @@ import { auditLog } from '@/lib/audit/service';
 import { parsePagination } from '@/lib/api/pagination';
 import { publishEvent } from '@/lib/events/bus';
 import { Prisma } from '@prisma/client';
+import { randomToken } from '@/lib/security/crypto';
+import { getSiteUrl } from '@/lib/seo';
+import { sendAdminInviteEmail } from '@/lib/notifications/email-service';
+
+const INVITE_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export const dynamic = 'force-dynamic';
 
@@ -51,32 +56,51 @@ export const GET = withRoute(async (req: NextRequest) => {
 
 const createSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8),
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   roleIds: z.array(z.string()).optional(),
 });
 
+/**
+ * Creating a user never accepts a password directly — an invite email is
+ * sent instead, with a link to set it themselves. The account starts
+ * PENDING_VERIFICATION with an unusable placeholder hash (a random UUID,
+ * never revealed) so it genuinely cannot be logged into until the invite is
+ * accepted; the same token mechanism doubles as "resend invite" if reused
+ * via the forgot-password flow for a still-pending user.
+ */
 export const POST = withRoute(async (req: NextRequest) => {
   const ctx = await requirePermission(req, 'identity:users:write');
   const body = createSchema.parse(await req.json().catch(() => ({})));
-  const passwordHash = await hashPassword(body.password);
+  const placeholderHash = await hashPassword(randomToken());
+  const resetToken = randomToken();
+  const resetTokenExpiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_MS);
+
   const user = await prisma.user.create({
     data: {
       tenantId: ctx.tenantId,
       email: body.email.toLowerCase(),
-      passwordHash,
+      passwordHash: placeholderHash,
       firstName: body.firstName,
       lastName: body.lastName,
-      status: 'ACTIVE',
+      status: 'PENDING_VERIFICATION',
       createdBy: ctx.session.userId,
+      resetToken,
+      resetTokenExpiresAt,
       userRoles: body.roleIds?.length
         ? { create: body.roleIds.map((roleId) => ({ roleId })) }
         : undefined,
     },
     select: { id: true, email: true, firstName: true, lastName: true, status: true },
   });
-  await auditLog({ tenantId: ctx.tenantId, userId: ctx.session.userId, action: 'user.created', resource: 'User', resourceId: user.id, after: { email: user.email }, ipAddress: ctx.ip, userAgent: ctx.userAgent });
+
+  sendAdminInviteEmail({
+    email: user.email,
+    firstName: user.firstName,
+    resetUrl: `${getSiteUrl()}/admin/reset-password?token=${resetToken}`,
+  }).catch(() => {});
+
+  await auditLog({ tenantId: ctx.tenantId, userId: ctx.session.userId, action: 'user.invited', resource: 'User', resourceId: user.id, after: { email: user.email }, ipAddress: ctx.ip, userAgent: ctx.userAgent });
   await publishEvent({ tenantId: ctx.tenantId, type: 'identity.user.created', aggregateId: user.id, aggregateType: 'User', payload: { email: user.email }, userId: ctx.session.userId });
   return ok({ user }, { status: 201 });
 });

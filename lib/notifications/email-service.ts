@@ -343,6 +343,67 @@ export async function sendWelcomeEmail(customer: {
   });
 }
 
+// ── Invite / Password reset (shared CTA-button shape) ─────
+function ctaButtonHtml(url: string, label: string): string {
+  return `
+    <div style="text-align: center; margin: 28px 0;">
+      <a href="${url}" style="display: inline-block; background: #c9a96e; color: #0a0a0a; font-weight: bold; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 14px;">${label}</a>
+    </div>
+    <p style="color: #999; font-size: 12px; word-break: break-all;">Or paste this link into your browser: ${url}</p>
+  `;
+}
+
+// ── Admin invite -> new staff User ────────────────────────
+export async function sendAdminInviteEmail(params: { email: string; firstName: string; resetUrl: string }) {
+  const content = `
+    <h2 style="color: #0a0a0a; margin: 0 0 8px;">You've been added to the team</h2>
+    <p style="color: #666; margin: 0 0 20px;">Hi ${params.firstName},</p>
+    <p style="margin: 0 0 20px;">An account has been created for you on The Steak Sheikh's admin dashboard. Set a password to get started.</p>
+    ${ctaButtonHtml(params.resetUrl, 'Set Your Password')}
+    <p style="color: #999; font-size: 12px;">This link expires in 7 days. If you weren't expecting this, you can safely ignore it.</p>
+  `;
+  return sendNotificationEmail({
+    notificationId: process.env.NOTIF_ID_ADMIN_INVITE || '',
+    subject: "You've been invited to The Steak Sheikh admin dashboard",
+    body: emailWrapper(content),
+    recipientEmail: params.email,
+  });
+}
+
+// ── Admin forgot-password -> existing staff User ──────────
+export async function sendAdminPasswordResetEmail(params: { email: string; firstName: string; resetUrl: string }) {
+  const content = `
+    <h2 style="color: #0a0a0a; margin: 0 0 8px;">Reset your password</h2>
+    <p style="color: #666; margin: 0 0 20px;">Hi ${params.firstName},</p>
+    <p style="margin: 0 0 20px;">We received a request to reset the password for your admin dashboard account.</p>
+    ${ctaButtonHtml(params.resetUrl, 'Reset Password')}
+    <p style="color: #999; font-size: 12px;">This link expires in 1 hour. If you didn't request this, you can safely ignore it — your password won't change.</p>
+  `;
+  return sendNotificationEmail({
+    notificationId: process.env.NOTIF_ID_ADMIN_PASSWORD_RESET || '',
+    subject: 'Reset your admin dashboard password',
+    body: emailWrapper(content),
+    recipientEmail: params.email,
+  });
+}
+
+// ── Customer forgot-password ──────────────────────────────
+export async function sendCustomerPasswordResetEmail(params: { email: string; firstName: string; resetUrl: string }) {
+  const content = `
+    <h2 style="color: #0a0a0a; margin: 0 0 8px;">Reset your password</h2>
+    <p style="color: #666; margin: 0 0 20px;">Hi ${params.firstName || 'there'},</p>
+    <p style="margin: 0 0 20px;">We received a request to reset the password for your account.</p>
+    ${ctaButtonHtml(params.resetUrl, 'Reset Password')}
+    <p style="color: #999; font-size: 12px;">This link expires in 1 hour. If you didn't request this, you can safely ignore it — your password won't change.</p>
+  `;
+  return sendNotificationEmail({
+    notificationId: process.env.NOTIF_ID_CUSTOMER_PASSWORD_RESET || '',
+    subject: 'Reset your password',
+    body: emailWrapper(content),
+    recipientEmail: params.email,
+  });
+}
+
 // ── Daily Summary -> Admin ────────────────────────────────
 export async function sendDailySummary(stats: {
   ordersToday: number;
