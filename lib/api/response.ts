@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { ApiError } from '@/lib/api/errors';
 import { logger } from '@/lib/logger';
 import crypto from 'crypto';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export interface PaginationMeta {
   cursor: string | null;
@@ -22,12 +23,11 @@ function sanitize(value: unknown): unknown {
   if (value === null || value === undefined) return value;
   if (typeof value === 'bigint') return value.toString();
   if (value instanceof Date) return value.toISOString();
-  // Prisma Decimal exposes toFixed / toString
-  if (typeof value === 'object' && value !== null && 'toFixed' in (value as object) && typeof (value as { toFixed?: unknown }).toFixed === 'function' && !(Array.isArray(value))) {
-    // Only treat as Decimal if it's not a plain number wrapper we control
-    const ctor = (value as { constructor?: { name?: string } }).constructor?.name;
-    if (ctor === 'Decimal') return Number((value as { toString(): string }).toString());
-  }
+  // instanceof, not constructor.name — a string-name check silently breaks
+  // under production minification (constructor names get mangled), which
+  // let raw Decimal internals leak into API responses and render as "NaN"
+  // on the client instead of a number.
+  if (value instanceof Decimal) return value.toNumber();
   if (Array.isArray(value)) return value.map(sanitize);
   if (typeof value === 'object') {
     const out: Record<string, unknown> = {};
