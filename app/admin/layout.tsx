@@ -27,6 +27,7 @@ Bell,
   Images,
   Tag,
   Mail,
+  MapPin,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -51,6 +52,7 @@ const NAV_ITEMS = [
     { label: 'QR Codes', href: '/admin/marketing/qr-codes', icon: QrCode, permission: 'branding:assets:write' },
   { label: 'Campaigns', href: '/admin/marketing/campaigns', icon: Send, permission: 'notifications:settings:read' },
   { label: 'Discounts', href: '/admin/discounts', icon: Tag, permission: 'discounts:codes:read' },
+  { label: 'Store Location', href: '/admin/store-location', icon: MapPin, permission: 'config:settings:read' },
   { label: 'Platform Services', href: '/admin/services', icon: Server, permission: 'services:platform:read' },
   { label: 'Users & Roles', href: '/admin/users', icon: ShieldCheck, permission: 'identity:users:read' },
   { label: 'Audit Logs', href: '/admin/audit', icon: ScrollText, permission: 'identity:audit:read' },
