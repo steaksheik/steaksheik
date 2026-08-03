@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, ShieldCheck, UserPlus, Pencil, KeyRound, UserX, UserCheck } from 'lucide-react';
+import { Loader2, Plus, ShieldCheck, UserPlus, Pencil, KeyRound, UserX, UserCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface RoleRef {
@@ -87,7 +87,7 @@ const ROLE_PRESETS: { name: string; description: string; keys: string[] }[] = [
 ];
 
 export default function UsersPage() {
-  const { authHeaders, hasPermission } = useAdmin();
+  const { authHeaders, hasPermission, user: currentUser } = useAdmin();
   const [tab, setTab] = useState<'users' | 'roles'>('users');
   const [users, setUsers] = useState<UserInfo[]>([]);
   const [roles, setRoles] = useState<RoleInfo[]>([]);
@@ -232,6 +232,34 @@ export default function UsersPage() {
       toast.error('Network error updating user status');
     } finally {
       setStatusChanging(false);
+    }
+  };
+
+  // ── Permanently delete a user (irreversible — distinct from deactivate) ──
+  const [deletingUser, setDeletingUser] = useState(false);
+
+  const deleteUserPermanently = async () => {
+    if (!manageUser) return;
+    if (!confirm(`Permanently delete ${manageUser.firstName} ${manageUser.lastName}? This cannot be undone — their account, sessions and role assignments will be removed.`)) return;
+    setDeletingUser(true);
+    try {
+      const res = await fetch(`/api/v1/users/${manageUser.id}/permanent`, {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: authHeaders(),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error?.message ?? 'Failed to delete user');
+        return;
+      }
+      toast.success('User deleted');
+      setUsers((prev) => prev.filter((u) => u.id !== manageUser.id));
+      setManageUser(null);
+    } catch {
+      toast.error('Network error deleting user');
+    } finally {
+      setDeletingUser(false);
     }
   };
 
@@ -535,6 +563,22 @@ export default function UsersPage() {
                         <UserCheck className="h-3.5 w-3.5 mr-1.5" />
                       )}
                       {manageUser.status === 'ACTIVE' ? 'Deactivate' : 'Reactivate'}
+                    </Button>
+                  )}
+                  {canDeleteUsers && manageUser.id !== currentUser?.id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive hover:text-destructive"
+                      onClick={deleteUserPermanently}
+                      disabled={deletingUser}
+                    >
+                      {deletingUser ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Delete Permanently
                     </Button>
                   )}
                 </div>
