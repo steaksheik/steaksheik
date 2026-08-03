@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, RefreshCw, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/lib/admin-auth-context';
 import { metaFor } from '@/lib/plugins/service-fields';
@@ -23,11 +23,24 @@ interface ServiceInfo {
   status: string;
 }
 
-type ItemStatus = 'ok' | 'error' | 'pending' | 'unknown';
+type ItemStatus = 'ok' | 'error' | 'warn' | 'pending' | 'unknown';
+
+// Mirrors the same three-way distinction Platform Services already draws
+// (app/admin/services/page.tsx) — CONFIGURED (saved but not verified) is
+// its own amber "warn" state, not the same as never-set-up UNCONFIGURED.
+// Collapsing them into one "pending" bucket here is what made this page
+// disagree with Platform Services right after a save.
+function serviceItemStatus(raw: string): ItemStatus {
+  if (raw === 'CONNECTED') return 'ok';
+  if (raw === 'ERROR' || raw === 'DISCONNECTED') return 'error';
+  if (raw === 'CONFIGURED' || raw === 'DEGRADED') return 'warn';
+  return 'pending';
+}
 
 function badgeLabel(status: ItemStatus, raw: string): string {
   if (status === 'ok') return raw;
-  if (status === 'error') return 'Error';
+  if (status === 'error') return raw === 'DISCONNECTED' ? 'Disconnected' : 'Error';
+  if (status === 'warn') return raw === 'DEGRADED' ? 'Degraded' : 'Configured — unverified';
   if (status === 'pending') return 'Not configured';
   return raw;
 }
@@ -72,8 +85,7 @@ export default function HealthPage() {
     { label: 'Database', status: health?.checks?.database?.status === 'up' ? 'ok' : 'unknown', raw: health?.checks?.database?.status ?? 'unknown' },
     ...services.map((s) => {
       const label = metaFor(s.serviceType)?.label ?? s.serviceType;
-      const status: ItemStatus = s.status === 'CONNECTED' ? 'ok' : s.status === 'ERROR' ? 'error' : 'pending';
-      return { label, status, raw: s.status };
+      return { label, status: serviceItemStatus(s.status), raw: s.status };
     }),
   ];
 
@@ -97,6 +109,8 @@ export default function HealthPage() {
               <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
               {item.status === 'ok' ? (
                 <CheckCircle className="h-4 w-4 text-emerald-500" />
+              ) : item.status === 'warn' ? (
+                <AlertCircle className="h-4 w-4 text-amber-500" />
               ) : item.status === 'pending' ? (
                 <div className="h-4 w-4 rounded-full bg-muted-foreground/20" />
               ) : (

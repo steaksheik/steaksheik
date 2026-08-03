@@ -87,14 +87,34 @@ export const PUT = withRoute(async (req, { params }) => {
   }
   const encrypted = encryptCredentials(mergedCreds);
 
-  const svc = await prisma.platformService.upsert({
-    where: { tenantId_serviceType: { tenantId: ctx.tenantId, serviceType: type as never } },
-    update: { adapterType: body.adapterType, displayName: body.displayName ?? type, credentials: encrypted as never, config: mergedConfig as never, status: 'CONFIGURED' },
-    create: { tenantId: ctx.tenantId, serviceType: type as never, adapterType: body.adapterType, displayName: body.displayName ?? type, credentials: encrypted as never, config: mergedConfig as never, status: 'CONFIGURED', isEnabled: false },
-  });
   // Adapters receive non-secret config (provider, host, region, fromEmail…)
   // merged with decrypted credentials so provider selection is respected.
-  await pluginRegistry.reconfigure(type, { ...mergedConfig, ...mergedCreds });
-  await auditLog({ tenantId: ctx.tenantId, userId: ctx.session.userId, action: 'service.configured', resource: 'PlatformService', resourceId: type, after: { adapterType: body.adapterType, provider: mergedConfig.provider }, ipAddress: ctx.ip, userAgent: ctx.userAgent });
-  return ok({ service: { ...svc, credentials: maskCredentials((svc.credentials ?? {}) as Record<string, unknown>) } });
+  const merged = { ...mergedConfig, ...mergedCreds };
+  await pluginRegistry.reconfigure(type, merged);
+
+  // Verify immediately rather than leaving the service in an ambiguous
+  // "saved but untested" limbo until someone separately clicks Test
+  // Connection — that gap is exactly what made Platform Services and
+  // System Health appear to disagree right after a save.
+  const adapter = pluginRegistry.get(type);
+  const testResult = await adapter.testConnection(merged).catch((err) => ({ success: false, message: (err as Error).message }));
+  const health = await adapter.healthCheck().catch(() => null);
+
+  const svc = await prisma.platformService.upsert({
+    where: { tenantId_serviceType: { tenantId: ctx.tenantId, serviceType: type as never } },
+    update: {
+      adapterType: body.adapterType, displayName: body.displayName ?? type,
+      credentials: encrypted as never, config: mergedConfig as never,
+      status: testResult.success ? 'CONNECTED' : 'ERROR',
+      lastHealthCheck: new Date(), lastHealthStatus: (health ?? testResult) as never,
+    },
+    create: {
+      tenantId: ctx.tenantId, serviceType: type as never, adapterType: body.adapterType, displayName: body.displayName ?? type,
+      credentials: encrypted as never, config: mergedConfig as never,
+      status: testResult.success ? 'CONNECTED' : 'ERROR', isEnabled: false,
+      lastHealthCheck: new Date(), lastHealthStatus: (health ?? testResult) as never,
+    },
+  });
+  await auditLog({ tenantId: ctx.tenantId, userId: ctx.session.userId, action: 'service.configured', resource: 'PlatformService', resourceId: type, after: { adapterType: body.adapterType, provider: mergedConfig.provider, verified: testResult.success }, ipAddress: ctx.ip, userAgent: ctx.userAgent });
+  return ok({ service: { ...svc, credentials: maskCredentials((svc.credentials ?? {}) as Record<string, unknown>) }, test: testResult });
 });
