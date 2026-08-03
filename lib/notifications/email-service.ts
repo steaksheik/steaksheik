@@ -133,10 +133,27 @@ export async function sendNotificationEmail(opts: SendEmailOpts): Promise<boolea
 
 // ── Email Templates ──────────────────────────────────────
 
-export function emailWrapper(content: string): string {
+/** Resolve the tenant's configured brand logo to an absolute URL (email clients can't load relative paths). */
+async function getBrandLogoUrl(): Promise<string | null> {
+  try {
+    const { prisma } = await import('@/lib/db');
+    const brand = await prisma.brand.findFirst({ select: { logoUrl: true } });
+    const raw = brand?.logoUrl;
+    if (!raw) return null;
+    if (/^https?:\/\//i.test(raw)) return raw;
+    const { getSiteUrl } = await import('@/lib/seo');
+    return `${getSiteUrl()}${raw.startsWith('/') ? '' : '/'}${raw}`;
+  } catch {
+    return null;
+  }
+}
+
+export async function emailWrapper(content: string): Promise<string> {
+  const logoUrl = await getBrandLogoUrl();
   return `
     <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: #0a0a0a; padding: 24px 32px; text-align: center;">
+        ${logoUrl ? `<img src="${logoUrl}" alt="The Steak Sheikh" width="56" height="56" style="height: 56px; width: 56px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; display: block;" />` : ''}
         <h1 style="color: #c9a96e; margin: 0; font-size: 24px; letter-spacing: 2px;">THE STEAK SHEIKH</h1>
         <p style="color: #888; margin: 4px 0 0; font-size: 12px;">Made with love.</p>
       </div>
@@ -197,7 +214,7 @@ export async function sendNewOrderAdminAlert(order: {
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_NEW_ORDER_RECEIVED || '',
     subject: `New Order ${order.orderNumber} - ${fmtPrice(Number(order.total))}`,
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: ADMIN_EMAIL,
     replyTo: order.customerEmail,
   });
@@ -252,7 +269,7 @@ export async function sendOrderStatusUpdate(order: {
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_ORDER_STATUS_UPDATE || '',
     subject: `Order ${order.orderNumber} - ${info.title}`,
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: order.customerEmail,
   });
 }
@@ -280,7 +297,7 @@ export async function sendOrderCancelledEmail(order: {
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_ORDER_CANCELLED || '',
     subject: `Order ${order.orderNumber} - Cancelled`,
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: order.customerEmail,
   });
 }
@@ -308,7 +325,7 @@ export async function sendOrderRefundedEmail(order: {
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_ORDER_REFUNDED || '',
     subject: `Order ${order.orderNumber} - Refund Processed`,
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: order.customerEmail,
   });
 }
@@ -338,7 +355,7 @@ export async function sendWelcomeEmail(customer: {
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_WELCOME_EMAIL || '',
     subject: 'Welcome to The Steak Sheikh - Made with Love',
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: customer.email,
   });
 }
@@ -365,7 +382,7 @@ export async function sendAdminInviteEmail(params: { email: string; firstName: s
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_ADMIN_INVITE || '',
     subject: "You've been invited to The Steak Sheikh admin dashboard",
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: params.email,
   });
 }
@@ -382,7 +399,7 @@ export async function sendAdminPasswordResetEmail(params: { email: string; first
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_ADMIN_PASSWORD_RESET || '',
     subject: 'Reset your admin dashboard password',
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: params.email,
   });
 }
@@ -399,7 +416,7 @@ export async function sendCustomerPasswordResetEmail(params: { email: string; fi
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_CUSTOMER_PASSWORD_RESET || '',
     subject: 'Reset your password',
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: params.email,
   });
 }
@@ -436,7 +453,7 @@ export async function sendDailySummary(stats: {
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_DAILY_SALES_SUMMARY || '',
     subject: `Daily Summary - ${fmtPrice(stats.revenueToday)} revenue, ${stats.ordersToday} orders`,
-    body: emailWrapper(content),
+    body: await emailWrapper(content),
     recipientEmail: ADMIN_EMAIL,
   });
 }

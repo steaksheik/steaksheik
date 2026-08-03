@@ -158,7 +158,7 @@ export async function sendEmailCampaign(params: {
   let failed = 0;
   await runBatched(params.recipients, 8, async (r) => {
     const unsubscribeUrl = `${params.siteOrigin}/unsubscribe?token=${r.unsubscribeToken}&channel=email`;
-    const html = emailWrapper(`
+    const html = await emailWrapper(`
       ${flyerHtml}
       ${params.bodyHtml}
       <p style="color:#999;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
