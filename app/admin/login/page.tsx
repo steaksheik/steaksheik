@@ -66,8 +66,8 @@ export default function AdminLoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-foreground text-background font-bold text-lg">
-            DK
+          <div className="mx-auto mb-4 h-12 w-12 overflow-hidden rounded-xl">
+            <img src="/logo-steak-sheikh.jpg" alt="The Steak Sheikh" className="h-full w-full object-cover" />
           </div>
           <CardTitle className="text-xl font-display">Back Office</CardTitle>
           <CardDescription>Sign in to manage your platform</CardDescription>

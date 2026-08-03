@@ -40,6 +40,9 @@ export default function AdminForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2">
+          <div className="mx-auto mb-4 h-12 w-12 overflow-hidden rounded-xl">
+            <img src="/logo-steak-sheikh.jpg" alt="The Steak Sheikh" className="h-full w-full object-cover" />
+          </div>
           <CardTitle className="text-xl font-display">Forgot Password</CardTitle>
           <CardDescription>We'll email you a link to reset it</CardDescription>
         </CardHeader>
