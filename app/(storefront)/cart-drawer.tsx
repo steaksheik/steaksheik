@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useCart } from '@/lib/cart-context';
+import { useCart, type CartModifier } from '@/lib/cart-context';
 import { X, Minus, Plus, Trash2, ShoppingBag, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,7 +15,7 @@ function fmt(n: number) {
 export function CartDrawer() {
   const {
     items, subtotal, deliveryFee, couponCode, discountAmount, total, itemCount,
-    drawerOpen, closeDrawer, updateQuantity, removeItem, applyCoupon, removeCoupon, loading,
+    drawerOpen, closeDrawer, updateQuantity, removeItem, removeModifier, applyCoupon, removeCoupon, loading,
   } = useCart();
   const router = useRouter();
   const [promoInput, setPromoInput] = useState('');
@@ -71,9 +71,22 @@ export function CartDrawer() {
                   <Link href={`/product/${item.productSlug}`} onClick={closeDrawer} className="text-sm font-bold hover:underline line-clamp-1">{item.productName}</Link>
                   {item.variantName && <p className="text-xs text-white/40">{item.variantName}</p>}
                   {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
-                    <p className="text-xs text-white/40">
-                      {(item.modifiers as Array<{ name: string }>).map((m) => m.name).join(', ')}
-                    </p>
+                    <ul className="mt-1 space-y-0.5">
+                      {(item.modifiers as CartModifier[]).map((m) => (
+                        <li key={m.modifierId} className="flex items-center gap-1.5 text-xs text-white/40">
+                          <button
+                            onClick={() => removeModifier(item.id, m.modifierId)}
+                            disabled={loading}
+                            aria-label={`Remove ${m.name}`}
+                            className="text-white/30 hover:text-red-400 transition-colors disabled:opacity-40"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                          <span>{m.name}</span>
+                          {m.priceAdjustment > 0 && <span>+{fmt(m.priceAdjustment)}</span>}
+                        </li>
+                      ))}
+                    </ul>
                   )}
                   <p className="text-sm mt-1" style={{ color: ACCENT }}>{fmt(item.unitPrice)}</p>
                   <div className="flex items-center gap-2 mt-2">

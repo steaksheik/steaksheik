@@ -3,6 +3,14 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { toast } from 'sonner';
 
+export interface CartModifier {
+  groupId: string;
+  groupName: string;
+  modifierId: string;
+  name: string;
+  priceAdjustment: number;
+}
+
 interface CartItem {
   id: string;
   productId: string;
@@ -36,6 +44,7 @@ interface CartContextValue extends CartState {
   addItem: (productId: string, variantId?: string, quantity?: number, modifiers?: unknown, notes?: string) => Promise<void>;
   updateQuantity: (itemId: string, quantity: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
+  removeModifier: (itemId: string, modifierId: string) => Promise<void>;
   applyCoupon: (code: string) => Promise<boolean>;
   removeCoupon: () => Promise<void>;
   openDrawer: () => void;
@@ -172,6 +181,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [syncFromApi]);
 
+  const removeModifier = useCallback(async (itemId: string, modifierId: string) => {
+    const token = getStoredToken();
+    if (!token) return;
+    setState(prev => ({ ...prev, loading: true }));
+    try {
+      const data = await apiFetch(`/api/v1/cart/${itemId}/modifiers/${modifierId}?token=${token}`, { method: 'DELETE' });
+      syncFromApi(data);
+      toast.success('Extra removed');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to remove extra');
+      setState(prev => ({ ...prev, loading: false }));
+    }
+  }, [syncFromApi]);
+
   const applyCoupon = useCallback(async (code: string) => {
     const token = getStoredToken();
     if (!token) { toast.error('Add an item to your cart first'); return false; }
@@ -224,6 +247,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       addItem,
       updateQuantity,
       removeItem: removeItemFn,
+      removeModifier,
       applyCoupon,
       removeCoupon,
       openDrawer: () => setState(prev => ({ ...prev, drawerOpen: true })),

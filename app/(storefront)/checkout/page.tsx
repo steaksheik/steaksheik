@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCart } from '@/lib/cart-context';
+import { useCart, type CartModifier } from '@/lib/cart-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { Truck, Store, ArrowLeft, Loader2, Tag } from 'lucide-react';
+import { Truck, Store, ArrowLeft, Loader2, Tag, X } from 'lucide-react';
 import Link from 'next/link';
 
 const ACCENT = '#c9a96e';
@@ -21,7 +21,7 @@ interface CustomerSession {
 }
 
 export default function CheckoutPage() {
-  const { items, subtotal, deliveryFee, couponCode, discountAmount, token, clearLocalCart, itemCount, applyCoupon, removeCoupon } = useCart();
+  const { items, subtotal, deliveryFee, couponCode, discountAmount, token, clearLocalCart, itemCount, applyCoupon, removeCoupon, removeModifier, loading: cartLoading } = useCart();
   const router = useRouter();
   const params = useSearchParams();
   const cancelled = params.get('cancelled');
@@ -314,9 +314,23 @@ export default function CheckoutPage() {
                     <span>{item.productName}</span>
                     {item.variantName && <span className="text-white/40 text-xs"> ({item.variantName})</span>}
                     {Array.isArray(item.modifiers) && item.modifiers.length > 0 && (
-                      <div className="text-white/40 text-xs">
-                        {(item.modifiers as Array<{ name: string }>).map((m) => m.name).join(', ')}
-                      </div>
+                      <ul className="mt-0.5 space-y-0.5">
+                        {(item.modifiers as CartModifier[]).map((m) => (
+                          <li key={m.modifierId} className="flex items-center gap-1.5 text-xs text-white/40">
+                            <button
+                              type="button"
+                              onClick={() => removeModifier(item.id, m.modifierId)}
+                              disabled={cartLoading}
+                              aria-label={`Remove ${m.name}`}
+                              className="text-white/30 hover:text-red-400 transition-colors disabled:opacity-40"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                            <span>{m.name}</span>
+                            {m.priceAdjustment > 0 && <span>+{fmt(m.priceAdjustment)}</span>}
+                          </li>
+                        ))}
+                      </ul>
                     )}
                   </div>
                   <span className="font-bold">{fmt(item.lineTotal)}</span>

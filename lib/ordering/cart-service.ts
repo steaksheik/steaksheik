@@ -91,6 +91,29 @@ export async function removeItem(itemId: string) {
   return prisma.cartItem.delete({ where: { id: itemId } });
 }
 
+/**
+ * Remove a single extra from a cart line, so a customer who added one extra
+ * too many can drop just that one instead of removing (and re-adding) the
+ * whole item. unitPrice already has every modifier's priceAdjustment baked
+ * in (see app/api/v1/cart/route.ts) — subtracting only the removed one's
+ * share keeps the remaining extras' prices intact.
+ */
+export async function removeModifierFromItem(itemId: string, modifierId: string) {
+  const item = await prisma.cartItem.findUnique({ where: { id: itemId } });
+  if (!item) return null;
+  const modifiers = Array.isArray(item.modifiers) ? (item.modifiers as Array<{ modifierId: string; priceAdjustment: number }>) : [];
+  const removed = modifiers.find((m) => m.modifierId === modifierId);
+  if (!removed) return item;
+
+  const remaining = modifiers.filter((m) => m.modifierId !== modifierId);
+  const newUnitPrice = Number(item.unitPrice) - Number(removed.priceAdjustment);
+
+  return prisma.cartItem.update({
+    where: { id: itemId },
+    data: { modifiers: remaining as never, unitPrice: new Decimal(newUnitPrice) },
+  });
+}
+
 export async function clearCart(cartId: string) {
   await prisma.cart.update({ where: { id: cartId }, data: { couponCode: null } });
   return prisma.cartItem.deleteMany({ where: { cartId } });
