@@ -403,13 +403,13 @@ export function HomeClient({
           <div className="relative overflow-hidden rounded-xl bg-[#b31217] text-white min-h-[150px] p-6 flex flex-col justify-center">
             <div className="flex items-center gap-2"><Truck className="h-5 w-5" /><h3 className="font-heading text-xl font-extrabold">DELIVERY</h3></div>
             <p className="mt-1 text-sm text-white/80">Delivered hot to you</p>
-            <button onClick={() => soon('Delivery ordering')} className="mt-4 w-fit rounded-md bg-white px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-[#b31217] hover:bg-white/90 transition-colors">Order Delivery</button>
+            <Link href="/menu" className="mt-4 w-fit rounded-md bg-white px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-[#b31217] hover:bg-white/90 transition-colors">Order Delivery</Link>
             <ShoppingBag className="absolute right-6 bottom-4 h-16 w-16 opacity-20" />
           </div>
           <div className="relative overflow-hidden rounded-xl text-[#0a0a0a] min-h-[150px] p-6 flex flex-col justify-center" style={{ backgroundColor: ACCENT }}>
             <div className="flex items-center gap-2"><ShoppingBag className="h-5 w-5" /><h3 className="font-heading text-xl font-extrabold">COLLECT IN STORE</h3></div>
             <p className="mt-1 text-sm text-black/70">Skip the queue</p>
-            <button onClick={() => soon('Collection ordering')} className="mt-4 w-fit rounded-md bg-[#0a0a0a] px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-white hover:bg-black/90 transition-colors">Order Collection</button>
+            <Link href="/menu" className="mt-4 w-fit rounded-md bg-[#0a0a0a] px-5 py-2.5 text-[11px] font-bold uppercase tracking-wide text-white hover:bg-black/90 transition-colors">Order Collection</Link>
           </div>
         </div>
       </section>
