@@ -2,14 +2,14 @@
 // Multi-tenant, event-driven, configuration-first schema.
 
 generator client {
-    provider = "prisma-client-js"
-    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
-    output = "../node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+  output        = "../node_modules/.prisma/client"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ═══════════════════════════════════════════════
@@ -46,7 +46,7 @@ model Tenant {
   seoSettings          SeoSettings?
   contactInfo          ContactInfo?
   socialLinks          SocialLink[]
-   customers            Customer[]
+  customers            Customer[]
   carts                Cart[]
   orders               Order[]
   loyaltyAccounts      LoyaltyAccount[]
@@ -316,6 +316,7 @@ model AuditLog {
   @@index([tenantId, createdAt])
   @@map("audit_logs")
 }
+
 // Every file uploaded through /api/v1/media/upload, regardless of where it
 // ends up being used (product/category image, campaign flyer, branding
 // asset, QR flyer...) — backs the admin Media Library gallery so a
@@ -339,6 +340,7 @@ model MediaAsset {
   @@index([tenantId, folder])
   @@map("media_assets")
 }
+
 // ═══════════════════════════════════════════════
 // FEATURE FLAGS
 // ═══════════════════════════════════════════════
@@ -662,10 +664,10 @@ model Category {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  tenant   Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent   Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryChildren")
-  products Product[]
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent    Category?  @relation("CategoryChildren", fields: [parentId], references: [id])
+  children  Category[] @relation("CategoryChildren")
+  products  Product[]
   discounts Discount[]
 
   @@unique([tenantId, slug])
@@ -682,32 +684,32 @@ enum CategoryStatus {
 }
 
 model Product {
-  id               String        @id @default(uuid())
-  tenantId         String
-  categoryId       String
-  name             String
-  slug             String
-  description      String?
-  shortDescription String?
-  basePrice        Decimal       @db.Decimal(10, 2)
-  compareAtPrice   Decimal?      @db.Decimal(10, 2)
-  currency         String        @default("GBP")
-  sku              String?
-  status           ProductStatus @default(DRAFT)
-  isFeatured       Boolean       @default(false)
-  isAvailable      Boolean       @default(true)
-  sortOrder        Int           @default(0)
-  nutritionalInfo  Json?
-  metadata         Json?
+  id                 String        @id @default(uuid())
+  tenantId           String
+  categoryId         String
+  name               String
+  slug               String
+  description        String?
+  shortDescription   String?
+  basePrice          Decimal       @db.Decimal(10, 2)
+  compareAtPrice     Decimal?      @db.Decimal(10, 2)
+  currency           String        @default("GBP")
+  sku                String?
+  status             ProductStatus @default(DRAFT)
+  isFeatured         Boolean       @default(false)
+  isAvailable        Boolean       @default(true)
+  sortOrder          Int           @default(0)
+  nutritionalInfo    Json?
+  metadata           Json?
   // Natasha's Law (Food Information Regulations 2014): allergens must be a
   // structured, explicitly-confirmed field — allergensConfirmed is the actual
   // publish gate, since an empty allergens array is only safe to trust once an
   // admin has actively confirmed it (vs. simply never having been asked).
-  allergens          String[]    @default([])
-  allergensConfirmed Boolean     @default(false)
-  publishedAt      DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  allergens          String[]      @default([])
+  allergensConfirmed Boolean       @default(false)
+  publishedAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
 
   tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   category       Category         @relation(fields: [categoryId], references: [id])
@@ -810,16 +812,16 @@ model ProductImage {
 // ═══════════════════════════════════════════════
 
 model Customer {
-  id            String         @id @default(uuid())
-  tenantId      String
-  email         String?
-  passwordHash  String?
-  firstName     String?
-  lastName      String?
-  phone         String?
-  status        CustomerStatus @default(ACTIVE)
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id           String         @id @default(uuid())
+  tenantId     String
+  email        String?
+  passwordHash String?
+  firstName    String?
+  lastName     String?
+  phone        String?
+  status       CustomerStatus @default(ACTIVE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
   // Bumped on logout and on password change so any previously-issued session
   // cookie (which embeds the version it was minted at) stops working
@@ -840,6 +842,16 @@ model Customer {
   resetToken          String?   @unique
   resetTokenExpiresAt DateTime?
 
+  // Email ownership check on self-registration: confirms the address is real
+  // and reachable (registration itself only validates format, e.g. zod's
+  // `.email()` would happily accept a syntactically-valid but fake address).
+  // Not enforced at login — a mistyped address shouldn't lock someone out of
+  // their own account — but gates marketing sends, since bouncing/undeliverable
+  // mail to an unverified address only hurts sender reputation.
+  emailVerified             Boolean   @default(false)
+  emailVerifyToken          String?   @unique
+  emailVerifyTokenExpiresAt DateTime?
+
   // Where this record came from — self-registered customers vs. contacts an
   // admin added for marketing purposes with offline/pre-existing consent
   // (e.g. a paper sign-up sheet or an imported mailing list). email is
@@ -858,6 +870,7 @@ model Customer {
   @@index([tenantId])
   @@map("customers")
 }
+
 enum CustomerStatus {
   ACTIVE
   INACTIVE
@@ -922,42 +935,42 @@ model CartItem {
 }
 
 model Order {
-  id              String        @id @default(uuid())
-  tenantId        String
-  customerId      String?
-  orderNumber     String
-  status          OrderStatus   @default(PENDING)
-  type            OrderType     @default(DELIVERY)
-  subtotal        Decimal       @db.Decimal(10, 2)
-  deliveryFee     Decimal       @default(0) @db.Decimal(10, 2)
-  discount        Decimal       @default(0) @db.Decimal(10, 2)
-  couponCode      String?
-  total           Decimal       @db.Decimal(10, 2)
-  currency        String        @default("GBP")
+  id                 String      @id @default(uuid())
+  tenantId           String
+  customerId         String?
+  orderNumber        String
+  status             OrderStatus @default(PENDING)
+  type               OrderType   @default(DELIVERY)
+  subtotal           Decimal     @db.Decimal(10, 2)
+  deliveryFee        Decimal     @default(0) @db.Decimal(10, 2)
+  discount           Decimal     @default(0) @db.Decimal(10, 2)
+  couponCode         String?
+  total              Decimal     @db.Decimal(10, 2)
+  currency           String      @default("GBP")
   // Delivery info
-  deliveryFirstName String?
-  deliveryLastName  String?
-  deliveryLine1     String?
-  deliveryLine2     String?
-  deliveryCity      String?
-  deliveryPostcode  String?
-  deliveryPhone     String?
-  deliveryNotes     String?
+  deliveryFirstName  String?
+  deliveryLastName   String?
+  deliveryLine1      String?
+  deliveryLine2      String?
+  deliveryCity       String?
+  deliveryPostcode   String?
+  deliveryPhone      String?
+  deliveryNotes      String?
   // Guest info (when no customer account)
-  guestEmail      String?
-  guestName       String?
-  guestPhone      String?
+  guestEmail         String?
+  guestName          String?
+  guestPhone         String?
   // Timestamps
-  estimatedReadyAt  DateTime?
-  confirmedAt       DateTime?
-  preparingAt       DateTime?
-  readyAt           DateTime?
-  dispatchedAt      DateTime?
-  deliveredAt       DateTime?
-  cancelledAt       DateTime?
+  estimatedReadyAt   DateTime?
+  confirmedAt        DateTime?
+  preparingAt        DateTime?
+  readyAt            DateTime?
+  dispatchedAt       DateTime?
+  deliveredAt        DateTime?
+  cancelledAt        DateTime?
   cancellationReason String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
 
   tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   customer           Customer?           @relation(fields: [customerId], references: [id], onDelete: SetNull)
@@ -1049,7 +1062,9 @@ model Discount {
   @@map("discounts")
 }
 
-/** One row per order a discount was actually applied to — powers redemption-limit checks and reporting. */
+/**
+ * One row per order a discount was actually applied to — powers redemption-limit checks and reporting.
+ */
 model DiscountRedemption {
   id         String   @id @default(uuid())
   discountId String
@@ -1067,18 +1082,18 @@ model DiscountRedemption {
 }
 
 model Payment {
-  id                String        @id @default(uuid())
-  orderId           String
-  stripeSessionId   String?       @unique
-  stripePaymentIntent String?     @unique
-  amount            Decimal       @db.Decimal(10, 2)
-  currency          String        @default("GBP")
-  status            PaymentStatus @default(PENDING)
-  method            String?
-  failureReason     String?
-  metadata          Json?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                  String        @id @default(uuid())
+  orderId             String
+  stripeSessionId     String?       @unique
+  stripePaymentIntent String?       @unique
+  amount              Decimal       @db.Decimal(10, 2)
+  currency            String        @default("GBP")
+  status              PaymentStatus @default(PENDING)
+  method              String?
+  failureReason       String?
+  metadata            Json?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
@@ -1105,15 +1120,15 @@ enum LoyaltyTier {
 }
 
 model LoyaltyAccount {
-  id             String       @id @default(uuid())
-  customerId     String       @unique
+  id             String      @id @default(uuid())
+  customerId     String      @unique
   tenantId       String
-  pointsBalance  Int          @default(0)
-  lifetimePoints Int          @default(0)
-  tier           LoyaltyTier  @default(BRONZE)
+  pointsBalance  Int         @default(0)
+  lifetimePoints Int         @default(0)
+  tier           LoyaltyTier @default(BRONZE)
   tierUpdatedAt  DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   customer     Customer             @relation(fields: [customerId], references: [id], onDelete: Cascade)
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1128,7 +1143,7 @@ model LoyaltyTransaction {
   id               String   @id @default(uuid())
   loyaltyAccountId String
   points           Int
-  type             String   // EARN, REDEEM, BONUS, ADJUSTMENT, EXPIRED
+  type             String // EARN, REDEEM, BONUS, ADJUSTMENT, EXPIRED
   description      String
   orderId          String?
   createdAt        DateTime @default(now())

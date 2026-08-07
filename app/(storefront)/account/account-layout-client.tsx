@@ -1,20 +1,36 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useCustomer } from '@/lib/customer-context';
-import { User, ShoppingBag, MapPin, Award, LogOut, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { User, ShoppingBag, MapPin, Award, LogOut, Loader2, MailWarning } from 'lucide-react';
 
 const ACCENT = '#c9a96e';
 
 // Account routes reachable without being logged in
-const PUBLIC_ACCOUNT_PATHS = ['/account/login', '/account/forgot-password', '/account/reset-password'];
+const PUBLIC_ACCOUNT_PATHS = ['/account/login', '/account/forgot-password', '/account/reset-password', '/account/verify-email'];
 
 export default function AccountLayoutClient({ rewardsEnabled, children }: { rewardsEnabled: boolean; children: React.ReactNode }) {
   const { customer, loading, logout } = useCustomer();
   const router = useRouter();
   const pathname = usePathname();
+  const [resending, setResending] = useState(false);
+
+  async function resendVerification() {
+    setResending(true);
+    try {
+      const res = await fetch('/api/v1/customers/verify-email/resend', { method: 'POST' });
+      const json = await res.json();
+      if (res.ok) toast.success('Verification email sent — check your inbox');
+      else toast.error(json.error?.message || 'Failed to send verification email');
+    } catch {
+      toast.error('Network error');
+    } finally {
+      setResending(false);
+    }
+  }
 
   const navItems = [
     { href: '/account', label: 'Profile', icon: User },
@@ -49,6 +65,22 @@ export default function AccountLayoutClient({ rewardsEnabled, children }: { rewa
       <h1 className="font-heading text-3xl tracking-wide mb-8" style={{ color: '#c9a96e' }}>
         MY ACCOUNT
       </h1>
+      {!customer.emailVerified && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between mb-8 px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <div className="flex items-start gap-2.5 text-sm text-amber-200">
+            <MailWarning className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>Please confirm your email address ({customer.email}) so we can reach you about orders and rewards.</span>
+          </div>
+          <button
+            onClick={resendVerification}
+            disabled={resending}
+            className="inline-flex items-center gap-2 shrink-0 px-4 py-2 rounded-lg text-xs font-semibold border border-amber-500/30 text-amber-200 hover:bg-amber-500/10 transition-colors"
+          >
+            {resending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Resend email
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-[240px_1fr] gap-8">
         {/* Sidebar */}
         <nav className="space-y-1">

@@ -26,7 +26,7 @@ export function encodeCustomerSessionCookie(data: CustomerSessionData & { sessio
  * cookie itself is still present and unexpired, since logout/password-change
  * bump sessionVersion server-side.
  */
-export async function getCustomerSession(): Promise<CustomerSessionData | null> {
+export async function getCustomerSession(): Promise<(CustomerSessionData & { emailVerified: boolean }) | null> {
   const cookieStore = await cookies();
   const raw = cookieStore.get(CUSTOMER_SESSION_COOKIE)?.value;
   if (!raw) return null;
@@ -39,9 +39,12 @@ export async function getCustomerSession(): Promise<CustomerSessionData | null> 
   }
   if (!parsed || parsed.exp < Date.now()) return null;
 
+  // emailVerified is read fresh from the DB rather than baked into the
+  // cookie — it can flip true after the cookie was minted (verify-email
+  // link clicked in another tab) without a re-login re-issuing the cookie.
   const customer = await prisma.customer.findUnique({
     where: { id: parsed.customerId },
-    select: { sessionVersion: true, status: true },
+    select: { sessionVersion: true, status: true, emailVerified: true },
   });
   if (!customer || customer.status !== 'ACTIVE') return null;
   if (customer.sessionVersion !== parsed.sessionVersion) return null;
@@ -52,6 +55,7 @@ export async function getCustomerSession(): Promise<CustomerSessionData | null> 
     email: parsed.email,
     firstName: parsed.firstName,
     lastName: parsed.lastName,
+    emailVerified: customer.emailVerified,
   };
 }
 

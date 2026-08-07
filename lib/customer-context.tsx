@@ -7,6 +7,7 @@ interface CustomerSession {
   email: string;
   firstName: string;
   lastName: string;
+  emailVerified: boolean;
 }
 
 interface CustomerCtx {

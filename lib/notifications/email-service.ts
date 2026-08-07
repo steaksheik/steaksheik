@@ -360,6 +360,23 @@ export async function sendWelcomeEmail(customer: {
   });
 }
 
+// ── Customer email verification ───────────────────────────
+export async function sendCustomerVerificationEmail(params: { email: string; firstName: string; verifyUrl: string }) {
+  const content = `
+    <h2 style="color: #0a0a0a; margin: 0 0 8px;">Confirm your email address</h2>
+    <p style="color: #666; margin: 0 0 20px;">Hi ${params.firstName || 'there'},</p>
+    <p style="margin: 0 0 20px;">Please confirm this is your email address so we can reach you about your orders and rewards.</p>
+    ${ctaButtonHtml(params.verifyUrl, 'Confirm Email')}
+    <p style="color: #999; font-size: 12px;">This link expires in 24 hours. If you didn't create an account, you can safely ignore it.</p>
+  `;
+  return sendNotificationEmail({
+    notificationId: process.env.NOTIF_ID_CUSTOMER_EMAIL_VERIFY || '',
+    subject: 'Confirm your email — The Steak Sheikh',
+    body: await emailWrapper(content),
+    recipientEmail: params.email,
+  });
+}
+
 // ── Invite / Password reset (shared CTA-button shape) ─────
 function ctaButtonHtml(url: string, label: string): string {
   return `

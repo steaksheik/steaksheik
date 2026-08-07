@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withRoute } from '@/lib/api/route';
-import { ok } from '@/lib/api/response';
+import { ok, fail } from '@/lib/api/response';
 import { publicTenant, getClientIp } from '@/lib/auth/context';
 import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit/service';
+import { domainCanReceiveMail } from '@/lib/security/email-domain';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,10 +20,20 @@ const schema = z.object({
  * GDPR — submitting this form is the opt-in), so subscribers immediately
  * show up as marketing-consented Contacts without a separate subscriber
  * table duplicating what Customer already tracks.
+ *
+ * Fake/typo'd domains are rejected right here at submit time (MX/A record
+ * lookup) rather than via a confirmation-email click — once someone
+ * subscribes with a real, deliverable domain they're subscribed immediately,
+ * no extra step required.
  */
 export const POST = withRoute(async (req: NextRequest) => {
   const tenantId = await publicTenant(req);
   const body = schema.parse(await req.json().catch(() => ({})));
+
+  const domain = body.email.split('@')[1];
+  if (!domain || !(await domainCanReceiveMail(domain))) {
+    return fail('INVALID_EMAIL', "That email address doesn't look deliverable — please check for typos", { status: 400 });
+  }
 
   const [firstName, ...rest] = (body.name || '').trim().split(/\s+/).filter(Boolean);
   const lastName = rest.join(' ') || null;

@@ -14,6 +14,7 @@ export const GET = withRoute(async () => {
     email: session.email,
     firstName: session.firstName,
     lastName: session.lastName,
+    emailVerified: session.emailVerified,
   });
 });
 

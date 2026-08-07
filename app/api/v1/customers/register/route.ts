@@ -7,6 +7,7 @@ import { auditLog } from '@/lib/audit/service';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { sendWelcomeEmail } from '@/lib/notifications/email-service';
+import { issueEmailVerification } from '@/lib/auth/email-verification';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +36,10 @@ export const POST = withRoute(async (req: NextRequest) => {
   if (existing) return fail('CONFLICT', 'An account with this email already exists', { status: 409 });
 
   const passwordHash = await bcrypt.hash(body.password, 12);
+  const { emailVerifyToken, emailVerifyTokenExpiresAt } = issueEmailVerification({
+    email: body.email.toLowerCase(),
+    firstName: body.firstName,
+  });
 
   const customer = await prisma.customer.create({
     data: {
@@ -47,6 +52,8 @@ export const POST = withRoute(async (req: NextRequest) => {
       marketingEmailConsent: body.marketingEmailConsent,
       marketingSmsConsent: body.marketingSmsConsent,
       marketingConsentUpdatedAt: new Date(),
+      emailVerifyToken,
+      emailVerifyTokenExpiresAt,
     },
   });
 
@@ -64,8 +71,9 @@ export const POST = withRoute(async (req: NextRequest) => {
     userAgent: req.headers.get('user-agent'),
   });
 
-  // Send welcome email (fire-and-forget)
-    sendWelcomeEmail({
+  // Welcome email (fire-and-forget — must never block registration itself).
+  // The confirmation email was already fired by issueEmailVerification above.
+  sendWelcomeEmail({
     email: body.email.toLowerCase(),
     firstName: customer.firstName ?? 'there',
   }).catch(() => {});
