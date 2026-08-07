@@ -514,7 +514,7 @@ export default function ServicesPage() {
               )}
 
               <DialogFooter className="gap-2 sm:gap-2">
-                {canTest && active.svc.configured && (
+                {canTest && (
                   <Button variant="outline" onClick={testConnection} disabled={testing || saving}>
                     {testing ? (
                       <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
