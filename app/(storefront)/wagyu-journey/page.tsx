@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getSiteUrl } from '@/lib/seo';
+import { getDefaultTenant, getBrand } from '@/lib/storefront';
+import { DEFAULT_ACCENT } from '../theme-context';
 import { WagyuJourney } from '@/components/sections/WagyuJourney';
-
-const ACCENT = '#c9a96e';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,7 +26,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Full-screen cinematic hero introducing the journey. */
-function JourneyHero() {
+function JourneyHero({ accent }: { accent: string }) {
   return (
     <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0a0a] px-4 text-center text-white">
       {/* Atmospheric background wash */}
@@ -40,7 +40,7 @@ function JourneyHero() {
       <div className="relative z-10 mx-auto max-w-4xl">
         <p
           className="font-heading text-sm uppercase tracking-[0.45em] sm:text-base"
-          style={{ color: '#c9a96e' }}
+          style={{ color: accent }}
         >
           The Steak Sheikh
         </p>
@@ -54,7 +54,7 @@ function JourneyHero() {
         </p>
         <div
           className="mx-auto mt-10 h-px w-24"
-          style={{ backgroundColor: '#c9a96e' }}
+          style={{ backgroundColor: accent }}
           aria-hidden="true"
         />
         <p className="mt-10 animate-pulse font-heading text-xs uppercase tracking-[0.3em] text-white/40">
@@ -69,7 +69,7 @@ function JourneyHero() {
  * Sonny's founder story — the personal introduction that sets up the journey.
  * Portrait on the right, "Steak Perfection" letter on the left.
  */
-function SonnyStory() {
+function SonnyStory({ accent }: { accent: string }) {
   return (
     <section className="relative overflow-hidden bg-[#0a0a0a] py-16 text-white sm:py-24">
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
@@ -77,7 +77,7 @@ function SonnyStory() {
         <div className="order-2 lg:order-1">
           <p
             className="font-heading text-sm uppercase tracking-[0.4em]"
-            style={{ color: ACCENT }}
+            style={{ color: accent }}
           >
             Simply Irresistible
           </p>
@@ -111,7 +111,7 @@ function SonnyStory() {
             </p>
             <p
               className="font-accent text-2xl italic sm:text-3xl"
-              style={{ color: ACCENT }}
+              style={{ color: accent }}
             >
               &lsquo;Made with Love&rsquo;
             </p>
@@ -148,11 +148,15 @@ function SonnyStory() {
   );
 }
 
-export default function WagyuJourneyPage() {
+export default async function WagyuJourneyPage() {
+  const tenant = await getDefaultTenant();
+  const brand = await getBrand(tenant.id);
+  const accent = brand?.theme?.accentColor ?? DEFAULT_ACCENT;
+
   return (
     <main className="bg-[#0a0a0a]">
-      <JourneyHero />
-      <SonnyStory />
+      <JourneyHero accent={accent} />
+      <SonnyStory accent={accent} />
       <WagyuJourney />
     </main>
   );

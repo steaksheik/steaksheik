@@ -4,8 +4,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Cookie } from 'lucide-react';
+import { useAccentColor } from './theme-context';
 
-const ACCENT = '#c9a96e';
 const CONSENT_COOKIE = 'ck_consent';
 
 function setConsentCookie(value: 'accepted' | 'rejected') {
@@ -21,6 +21,7 @@ function setConsentCookie(value: 'accepted' | 'rejected') {
  * needing its own consent.
  */
 export function CookieConsentBanner({ hasDecision }: { hasDecision: boolean }) {
+  const ACCENT = useAccentColor();
   const router = useRouter();
   const [visible, setVisible] = useState(!hasDecision);
 

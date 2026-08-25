@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import type { HeroConfig, PromoCard } from '@/lib/storefront';
 import { useCustomer } from '@/lib/customer-context';
+import { useAccentColor } from './theme-context';
 import {
   Flame,
   Truck,
@@ -46,8 +47,6 @@ const IMG = {
   rPlated: 'https://cdn.abacus.ai/images/34161c54-4f57-4065-809c-42316f8df04d.png',
 };
 
-const ACCENT = '#c9a96e';
-
 // Mirrors the real tier ladder in lib/ordering/loyalty-service.ts — keep in sync if those change.
 const LOYALTY_TIERS = [
   { tier: 'BRONZE', threshold: 0, img: IMG.rChips, multiplier: '1x', perk: 'Earn 10 points per £1 spent' },
@@ -63,6 +62,7 @@ const MAX_TIER_THRESHOLD = LOYALTY_TIERS[LOYALTY_TIERS.length - 1].threshold;
  * marketing image when no slides are configured.
  */
 function HeroBackground({ hero }: { hero: HeroConfig | null }) {
+  const ACCENT = useAccentColor();
   const slides = hero?.slides ?? [];
   const [idx, setIdx] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -158,6 +158,7 @@ export function HomeClient({
   promoCards?: PromoCard[];
   rewardsEnabled?: boolean;
 }) {
+  const ACCENT = useAccentColor();
   const soon = (label: string) => toast.info(`${label} — coming soon`);
   const { customer } = useCustomer();
   const rewardsCta = customer

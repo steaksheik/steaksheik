@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { useCart } from '@/lib/cart-context';
 import { useCustomer } from '@/lib/customer-context';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
+import { DEFAULT_ACCENT, useAccentColor } from './theme-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Menu,
@@ -42,8 +43,6 @@ interface NavCategory {
   slug: string;
 }
 
-const ACCENT = '#c9a96e';
-
 export function StorefrontShell({
   brand,
   categories,
@@ -59,7 +58,7 @@ export function StorefrontShell({
   const [menuOpen, setMenuOpen] = useState(false);
   const [iosInstallOpen, setIosInstallOpen] = useState(false);
   const name = (brand?.name ?? 'The Steak Sheikh').toUpperCase();
-  const accent = brand?.theme?.accentColor ?? ACCENT;
+  const accent = brand?.theme?.accentColor ?? DEFAULT_ACCENT;
   const pwaInstall = usePwaInstall();
 
   const soon = (label: string) => toast.info(`${label} -- coming soon`);
@@ -357,6 +356,7 @@ export function StorefrontShell({
 /** Cart icon button with live item count badge */
 /** Account icon — links to /account or /account/login */
 function AccountButton() {
+  const accent = useAccentColor();
   const { customer, loading } = useCustomer();
   if (loading) return <div className="hidden sm:inline-flex p-2 w-[34px]" />;
   if (customer) {
@@ -366,7 +366,10 @@ function AccountButton() {
         aria-label="My Account"
         className="hidden sm:inline-flex items-center gap-1.5 p-2 text-white/70 hover:text-white transition-colors"
       >
-        <div className="h-[18px] w-[18px] rounded-full bg-[#c9a96e] flex items-center justify-center text-[10px] font-bold text-[#0a0a0a]">
+        <div
+          className="h-[18px] w-[18px] rounded-full flex items-center justify-center text-[10px] font-bold text-[#0a0a0a]"
+          style={{ backgroundColor: accent }}
+        >
           {(customer.firstName?.[0] || customer.email[0]).toUpperCase()}
         </div>
       </Link>

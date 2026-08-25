@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useCustomer } from '@/lib/customer-context';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../../theme-context';
 
 export default function VerifyEmailPage() {
+  const ACCENT = useAccentColor();
   const { refresh } = useCustomer();
   const [token, setToken] = useState<string | null>(null);
   const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');

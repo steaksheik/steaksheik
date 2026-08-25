@@ -5,8 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircle, Clock, Loader2, AlertCircle } from 'lucide-react';
 import { useCart } from '@/lib/cart-context';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../theme-context';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n);
@@ -30,6 +29,7 @@ interface OrderData {
 }
 
 export default function OrderConfirmationPage() {
+  const ACCENT = useAccentColor();
   const params = useSearchParams();
   const orderNumber = params.get('orderNumber');
   const [order, setOrder] = useState<OrderData | null>(null);

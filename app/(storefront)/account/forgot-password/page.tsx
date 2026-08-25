@@ -4,10 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2 } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../../theme-context';
 
 export default function ForgotPasswordPage() {
+  const ACCENT = useAccentColor();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);

@@ -6,13 +6,13 @@ import Link from 'next/link';
 import { useCustomer } from '@/lib/customer-context';
 import { toast } from 'sonner';
 import { User, ShoppingBag, MapPin, Award, LogOut, Loader2, MailWarning } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../theme-context';
 
 // Account routes reachable without being logged in
 const PUBLIC_ACCOUNT_PATHS = ['/account/login', '/account/forgot-password', '/account/reset-password', '/account/verify-email'];
 
 export default function AccountLayoutClient({ rewardsEnabled, children }: { rewardsEnabled: boolean; children: React.ReactNode }) {
+  const ACCENT = useAccentColor();
   const { customer, loading, logout } = useCustomer();
   const router = useRouter();
   const pathname = usePathname();
@@ -62,7 +62,7 @@ export default function AccountLayoutClient({ rewardsEnabled, children }: { rewa
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-10">
-      <h1 className="font-heading text-3xl tracking-wide mb-8" style={{ color: '#c9a96e' }}>
+      <h1 className="font-heading text-3xl tracking-wide mb-8" style={{ color: ACCENT }}>
         MY ACCOUNT
       </h1>
       {!customer.emailVerified && (
@@ -91,10 +91,9 @@ export default function AccountLayoutClient({ rewardsEnabled, children }: { rewa
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  active
-                    ? 'bg-[#c9a96e]/10 text-[#c9a96e]'
-                    : 'text-neutral-400 hover:text-white hover:bg-white/5'
+                  active ? '' : 'text-neutral-400 hover:text-white hover:bg-white/5'
                 }`}
+                style={active ? { backgroundColor: `${ACCENT}1a`, color: ACCENT } : undefined}
               >
                 <item.icon className="h-4 w-4" />
                 {item.label}

@@ -5,8 +5,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2, MailX, CheckCircle } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../theme-context';
 
 function channelLabel(channel: string): string {
   if (channel === 'sms') return 'marketing texts';
@@ -15,6 +14,7 @@ function channelLabel(channel: string): string {
 }
 
 export default function UnsubscribePage() {
+  const ACCENT = useAccentColor();
   const params = useSearchParams();
   const token = params.get('token') ?? '';
   const channel = (params.get('channel') ?? 'email') as 'email' | 'sms' | 'all';

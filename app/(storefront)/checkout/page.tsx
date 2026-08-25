@@ -6,8 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Truck, Store, ArrowLeft, Loader2, Tag, X } from 'lucide-react';
 import Link from 'next/link';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../theme-context';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n);
@@ -21,6 +20,7 @@ interface CustomerSession {
 }
 
 export default function CheckoutPage() {
+  const ACCENT = useAccentColor();
   const { items, subtotal, deliveryFee, couponCode, discountAmount, token, clearLocalCart, itemCount, applyCoupon, removeCoupon, removeModifier, loading: cartLoading } = useCart();
   const router = useRouter();
   const params = useSearchParams();

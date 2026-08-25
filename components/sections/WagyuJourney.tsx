@@ -4,9 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
-
-/** Brand tokens (mirrors the storefront palette used across home-client.tsx). */
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '@/app/(storefront)/theme-context';
 
 export interface JourneyStep {
   /** 1-based step index, rendered as the giant faded numeral. */
@@ -165,6 +163,7 @@ function MediaFallback() {
 
 /** Animated vertical gold connector suggesting the path between steps. */
 function Connector() {
+  const ACCENT = useAccentColor();
   const prefersReduced = useReducedMotion();
   return (
     <div className="flex justify-center py-6" aria-hidden="true">
@@ -198,6 +197,7 @@ function JourneyStepBlock({
   step: JourneyStep;
   observe: (el: HTMLElement | null, index: number) => void;
 }) {
+  const ACCENT = useAccentColor();
   const prefersReduced = useReducedMotion();
   const imageLeft = step.index % 2 === 1; // odd steps: image left, text right
 
@@ -294,6 +294,7 @@ export function WagyuJourney({
 }: {
   steps?: JourneyStep[];
 }) {
+  const ACCENT = useAccentColor();
   const [active, setActive] = useState(1);
   const total = steps.length;
   const observerRef = useRef<IntersectionObserver | null>(null);

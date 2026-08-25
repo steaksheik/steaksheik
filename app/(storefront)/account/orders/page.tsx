@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Package, ChevronDown, ChevronUp } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../../theme-context';
 
 interface OrderItem {
   id: string;
@@ -45,6 +44,7 @@ function fmt(n: number) {
 }
 
 export default function CustomerOrdersPage() {
+  const ACCENT = useAccentColor();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);

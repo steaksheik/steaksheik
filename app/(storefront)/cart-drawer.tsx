@@ -5,8 +5,7 @@ import { useCart, type CartModifier } from '@/lib/cart-context';
 import { X, Minus, Plus, Trash2, ShoppingBag, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from './theme-context';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n);
@@ -18,6 +17,7 @@ export function CartDrawer() {
     drawerOpen, closeDrawer, updateQuantity, removeItem, removeModifier, applyCoupon, removeCoupon, loading,
   } = useCart();
   const router = useRouter();
+  const ACCENT = useAccentColor();
   const [promoInput, setPromoInput] = useState('');
   const [applying, setApplying] = useState(false);
 

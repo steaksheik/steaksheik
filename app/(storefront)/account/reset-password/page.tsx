@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { useCustomer } from '@/lib/customer-context';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../../theme-context';
 
 export default function ResetPasswordPage() {
+  const ACCENT = useAccentColor();
   const router = useRouter();
   const { refresh } = useCustomer();
   const [token, setToken] = useState<string | null>(null);

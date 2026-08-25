@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Plus, MapPin, Trash2, Star, Pencil, X } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../../theme-context';
 
 interface Address {
   id: string;
@@ -27,6 +26,7 @@ const EMPTY: Omit<Address, 'id'> = {
 };
 
 export default function AddressesPage() {
+  const ACCENT = useAccentColor();
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Address | (Omit<Address, 'id'> & { id?: string }) | null>(null);

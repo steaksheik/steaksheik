@@ -4,10 +4,10 @@ import { useState, useEffect } from 'react';
 import { useCustomer } from '@/lib/customer-context';
 import { toast } from 'sonner';
 import { Loader2, Save, Lock } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../theme-context';
 
 export default function ProfilePage() {
+  const ACCENT = useAccentColor();
   const { customer, refresh } = useCustomer();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');

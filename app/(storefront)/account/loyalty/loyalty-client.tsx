@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Loader2, Award, TrendingUp, Star, Gift, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-
-const ACCENT = '#c9a96e';
+import { useAccentColor } from '../../theme-context';
 
 interface Transaction {
   id: string;
@@ -39,6 +38,7 @@ const TIER_BG: Record<string, string> = {
 };
 
 export default function LoyaltyClient() {
+  const ACCENT = useAccentColor();
   const [data, setData] = useState<LoyaltyData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -112,21 +112,21 @@ export default function LoyaltyClient() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="border border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Star className="h-4 w-4 text-[#c9a96e]" />
+            <Star className="h-4 w-4" style={{ color: ACCENT }} />
             <span className="text-xs uppercase tracking-wider text-neutral-400">Points Balance</span>
           </div>
           <p className="text-2xl font-bold text-white">{data.pointsBalance.toLocaleString()}</p>
         </div>
         <div className="border border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="h-4 w-4 text-[#c9a96e]" />
+            <TrendingUp className="h-4 w-4" style={{ color: ACCENT }} />
             <span className="text-xs uppercase tracking-wider text-neutral-400">Lifetime Points</span>
           </div>
           <p className="text-2xl font-bold text-white">{data.lifetimePoints.toLocaleString()}</p>
         </div>
         <div className="border border-white/10 rounded-xl p-5">
           <div className="flex items-center gap-2 mb-2">
-            <Gift className="h-4 w-4 text-[#c9a96e]" />
+            <Gift className="h-4 w-4" style={{ color: ACCENT }} />
             <span className="text-xs uppercase tracking-wider text-neutral-400">Points Multiplier</span>
           </div>
           <p className="text-2xl font-bold text-white">{data.tierBenefits.multiplier}x</p>

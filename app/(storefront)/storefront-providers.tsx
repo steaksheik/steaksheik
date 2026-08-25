@@ -3,14 +3,23 @@
 import { CartProvider } from '@/lib/cart-context';
 import { CustomerProvider } from '@/lib/customer-context';
 import { CartDrawer } from './cart-drawer';
+import { BrandThemeProvider } from './theme-context';
 
-export function StorefrontProviders({ children }: { children: React.ReactNode }) {
+export function StorefrontProviders({
+  accentColor,
+  children,
+}: {
+  accentColor?: string | null;
+  children: React.ReactNode;
+}) {
   return (
-    <CustomerProvider>
-      <CartProvider>
-        {children}
-        <CartDrawer />
-      </CartProvider>
-    </CustomerProvider>
+    <BrandThemeProvider accentColor={accentColor}>
+      <CustomerProvider>
+        <CartProvider>
+          {children}
+          <CartDrawer />
+        </CartProvider>
+      </CustomerProvider>
+    </BrandThemeProvider>
   );
 }
