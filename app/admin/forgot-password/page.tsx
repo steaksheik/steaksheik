@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +13,17 @@ export default function AdminForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [brand, setBrand] = useState<{ name: string; logoUrl: string | null } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/v1/branding', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((res) => {
+        const b = res?.data?.brand;
+        if (b) setBrand({ name: b.name, logoUrl: b.logoUrl ?? null });
+      })
+      .catch(() => undefined);
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -40,8 +51,12 @@ export default function AdminForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-muted/30 px-4">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 h-12 w-12 overflow-hidden rounded-xl">
-            <img src="/logo-steak-sheikh.jpg" alt="The Steak Sheikh" className="h-full w-full object-cover" />
+          <div className="mx-auto mb-4 h-12 w-12 overflow-hidden rounded-xl bg-muted flex items-center justify-center">
+            {brand?.logoUrl ? (
+              <img src={brand.logoUrl} alt={brand.name} className="h-full w-full object-contain" />
+            ) : (
+              <span className="text-lg font-bold text-muted-foreground">{(brand?.name || 'S')[0]}</span>
+            )}
           </div>
           <CardTitle className="text-xl font-display">Forgot Password</CardTitle>
           <CardDescription>We'll email you a link to reset it</CardDescription>

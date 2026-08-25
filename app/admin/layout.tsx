@@ -40,6 +40,11 @@ import { AuthCtx, type AdminUser } from '@/lib/admin-auth-context';
 // Admin routes reachable without a session — bypass the authenticated shell entirely
 const PUBLIC_ADMIN_PATHS = ['/admin/login', '/admin/forgot-password', '/admin/reset-password'];
 
+interface AdminBrand {
+  name: string;
+  logoUrl: string | null;
+}
+
 // ── Nav items ───────────────────────────────────────────
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard, permission: null },
@@ -68,29 +73,36 @@ function SidebarContent({
   collapsed,
   pathname,
   user,
+  brand,
   hasPermission,
   onLogout,
 }: {
   collapsed: boolean;
   pathname: string;
   user: AdminUser | null;
+  brand: AdminBrand | null;
   hasPermission: (p: string) => boolean;
   onLogout: () => void;
 }) {
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.permission || hasPermission(item.permission)
   );
+  const brandName = brand?.name || 'The Steak Sheikh';
 
   return (
     <div className="flex h-full flex-col">
       {/* Logo */}
       <div className="flex h-16 items-center gap-3 px-4 border-b border-border/40">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden">
-          <img src="/logo-steak-sheikh.jpg" alt="The Steak Sheikh" className="h-full w-full object-cover" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-muted">
+          {brand?.logoUrl ? (
+            <img src={brand.logoUrl} alt={brandName} className="h-full w-full object-contain" />
+          ) : (
+            <span className="text-sm font-bold text-muted-foreground">{brandName[0]}</span>
+          )}
         </div>
         {!collapsed && (
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">The Steak Sheikh</p>
+            <p className="text-sm font-semibold truncate">{brandName}</p>
             <p className="text-[11px] text-muted-foreground truncate">Back Office</p>
           </div>
         )}
@@ -180,6 +192,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [brand, setBrand] = useState<AdminBrand | null>(null);
+
+  // Load the real brand (name + logo) once for the sidebar -- independent of
+  // the auth check below so the sidebar always reflects what's actually
+  // saved in Admin -> Branding instead of a hardcoded placeholder.
+  useEffect(() => {
+    fetch('/api/v1/branding', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((res) => {
+        const b = res?.data?.brand;
+        if (b) setBrand({ name: b.name, logoUrl: b.logoUrl ?? null });
+      })
+      .catch(() => undefined);
+  }, []);
 
   // Check session. Re-runs on every navigation (not just first mount) because
   // this layout persists across client-side route changes within /admin/* -
@@ -274,6 +300,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               collapsed={collapsed}
               pathname={pathname}
               user={user}
+              brand={brand}
               hasPermission={hasPermission}
               onLogout={logout}
             />
@@ -297,6 +324,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 collapsed={false}
                 pathname={pathname}
                 user={user}
+                brand={brand}
                 hasPermission={hasPermission}
                 onLogout={logout}
               />
