@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 import { useCart } from '@/lib/cart-context';
 import { useCustomer } from '@/lib/customer-context';
 import { usePwaInstall } from '@/hooks/use-pwa-install';
-import { DEFAULT_ACCENT, useAccentColor } from './theme-context';
+import { DEFAULT_ACCENT, DEFAULT_PRIMARY, useAccentColor } from './theme-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Menu,
@@ -59,6 +59,7 @@ export function StorefrontShell({
   const [iosInstallOpen, setIosInstallOpen] = useState(false);
   const name = (brand?.name ?? 'The Steak Sheikh').toUpperCase();
   const accent = brand?.theme?.accentColor ?? DEFAULT_ACCENT;
+  const primary = brand?.theme?.primaryColor ?? DEFAULT_PRIMARY;
   const pwaInstall = usePwaInstall();
 
   const soon = (label: string) => toast.info(`${label} -- coming soon`);
@@ -124,7 +125,10 @@ export function StorefrontShell({
   return (
     <div className="min-h-screen flex flex-col bg-[#0a0a0a] text-white">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0a0a0a]/95 backdrop-blur-md">
+      <header
+        className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md"
+        style={{ backgroundColor: `${primary}f2` }}
+      >
         <div className="mx-auto flex h-[76px] sm:h-[84px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {Logo}
 
@@ -199,7 +203,7 @@ export function StorefrontShell({
 
         {/* Mobile nav */}
         {mobileOpen && (
-          <div className="lg:hidden border-t border-white/10 bg-[#0a0a0a] px-4 py-4 space-y-1">
+          <div className="lg:hidden border-t border-white/10 px-4 py-4 space-y-1" style={{ backgroundColor: primary }}>
             <Link href="/menu" onClick={() => setMobileOpen(false)} className="block py-2.5 text-sm font-semibold uppercase tracking-wide text-white/80 hover:text-white">Full Menu</Link>
             {categories.map((c) => (
               <Link
@@ -231,7 +235,7 @@ export function StorefrontShell({
       <main className="flex-1">{children}</main>
 
       {/* ── Footer ── */}
-      <footer className="border-t border-white/10 bg-[#0a0a0a]">
+      <footer className="border-t border-white/10" style={{ backgroundColor: primary }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-14">
           <div className="grid gap-10 md:grid-cols-5">
             {/* Brand */}

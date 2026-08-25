@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import type { HeroConfig, PromoCard } from '@/lib/storefront';
 import { useCustomer } from '@/lib/customer-context';
-import { useAccentColor } from './theme-context';
+import { useBrandTheme } from './theme-context';
 import {
   Flame,
   Truck,
@@ -62,7 +62,7 @@ const MAX_TIER_THRESHOLD = LOYALTY_TIERS[LOYALTY_TIERS.length - 1].threshold;
  * marketing image when no slides are configured.
  */
 function HeroBackground({ hero }: { hero: HeroConfig | null }) {
-  const ACCENT = useAccentColor();
+  const { accentColor: ACCENT } = useBrandTheme();
   const slides = hero?.slides ?? [];
   const [idx, setIdx] = useState(0);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -158,7 +158,7 @@ export function HomeClient({
   promoCards?: PromoCard[];
   rewardsEnabled?: boolean;
 }) {
-  const ACCENT = useAccentColor();
+  const { secondaryColor: CARD_BG, accentColor: ACCENT } = useBrandTheme();
   const soon = (label: string) => toast.info(`${label} — coming soon`);
   const { customer } = useCustomer();
   const rewardsCta = customer
@@ -256,7 +256,7 @@ export function HomeClient({
           <div className="grid gap-5 md:grid-cols-3">
             {promoCards.map((card, i) =>
               card.style === 'accent' ? (
-                <div key={i} className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white min-h-[180px] p-6 flex flex-col justify-center">
+                <div key={i} className="relative overflow-hidden rounded-xl text-white min-h-[180px] p-6 flex flex-col justify-center" style={{ backgroundColor: CARD_BG }}>
                   <h3 className="font-heading text-2xl font-extrabold leading-tight" style={{ color: ACCENT }}>{card.title}</h3>
                   {card.subtitle && <p className="mt-1 text-sm text-white/70">{card.subtitle}</p>}
                   {card.priceText && <p className="text-lg font-extrabold text-white">{card.priceText}</p>}
@@ -311,7 +311,7 @@ export function HomeClient({
               </div>
             ))}
           </div>
-          <div className="rounded-xl bg-[#0a0a0a] p-6 text-white flex flex-col justify-center">
+          <div className="rounded-xl p-6 text-white flex flex-col justify-center" style={{ backgroundColor: CARD_BG }}>
             <h3 className="font-heading text-xl font-extrabold">STEAK REWARDS</h3>
             <p className="mt-2 text-sm text-white/60">
               {customer
@@ -333,7 +333,7 @@ export function HomeClient({
           {featuredSubtitle && <p className="mt-1 text-sm text-neutral-500">{featuredSubtitle}</p>}
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {featured.map((p) => (
-              <div key={p.id} className="group overflow-hidden rounded-xl bg-[#0a0a0a] text-white">
+              <div key={p.id} className="group overflow-hidden rounded-xl text-white" style={{ backgroundColor: CARD_BG }}>
                 <Link href={`/product/${p.slug}`} className="block relative aspect-square overflow-hidden bg-neutral-900">
                   {p.imageUrl ? (
                     <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
@@ -362,7 +362,7 @@ export function HomeClient({
           ].map((f) => {
             const Icon = f.icon;
             return (
-              <Link key={f.title} href={f.href} className="group relative overflow-hidden rounded-xl min-h-[140px] flex items-center bg-[#0a0a0a] p-6 border border-white/5 hover:border-white/15 transition-colors">
+              <Link key={f.title} href={f.href} className="group relative overflow-hidden rounded-xl min-h-[140px] flex items-center p-6 border border-white/5 hover:border-white/15 transition-colors" style={{ backgroundColor: CARD_BG }}>
                 <Icon className="absolute -right-3 -bottom-3 h-28 w-28 opacity-[0.08] text-white" strokeWidth={1} />
                 <div className="relative z-10 text-white">
                   <Icon className="h-7 w-7" style={{ color: ACCENT }} strokeWidth={1.4} />
@@ -418,7 +418,7 @@ export function HomeClient({
       {/* ══ TESTIMONIAL + STORY ══ */}
       <section id="story" className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 scroll-mt-20">
         <div className="grid gap-5 lg:grid-cols-2">
-          <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white flex">
+          <div className="relative overflow-hidden rounded-xl text-white flex" style={{ backgroundColor: CARD_BG }}>
             <img src={IMG.testimonial} alt="Customer favourite steak" className="h-auto w-2/5 object-cover" />
             <div className="p-6 flex flex-col justify-center">
               <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: ACCENT }}>What Our Customers Say</h3>
@@ -450,7 +450,8 @@ export function HomeClient({
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
         <Link
           href="/wagyu-journey"
-          className="group relative block overflow-hidden rounded-xl bg-[#0a0a0a] text-white"
+          className="group relative block overflow-hidden rounded-xl text-white"
+          style={{ backgroundColor: CARD_BG }}
         >
           {/* Atmospheric preview collage */}
           <div className="absolute inset-0">
@@ -497,7 +498,7 @@ export function HomeClient({
 
       {/* ══ VALUES ══ */}
       <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-        <div className="relative overflow-hidden rounded-xl bg-[#0a0a0a] text-white">
+        <div className="relative overflow-hidden rounded-xl text-white" style={{ backgroundColor: CARD_BG }}>
           <div className="grid lg:grid-cols-[1fr_300px]">
             <div className="p-8">
               <h2 className="font-heading text-xl font-extrabold" style={{ color: ACCENT }}>WE CARE ABOUT MORE THAN JUST STEAK</h2>

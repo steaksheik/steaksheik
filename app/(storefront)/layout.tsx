@@ -25,7 +25,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
   const analytics = analyticsConsented ? analyticsConfig : { ga4MeasurementId: null, gtmContainerId: null };
 
   return (
-    <StorefrontProviders accentColor={brand?.theme?.accentColor}>
+    <StorefrontProviders theme={brand?.theme}>
     <CookieConsentBanner hasDecision={hasDecision} />
     {analytics.gtmContainerId && (
       <noscript>
