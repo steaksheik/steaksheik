@@ -93,32 +93,37 @@ export function StorefrontShell({
     toast.info('Use your browser menu and choose "Install app" or "Add to Home screen"');
   }
 
+  // A logo image already carries the brand's identity on its own — showing
+  // the business name/tagline text next to it is redundant clutter. Only
+  // fall back to the text treatment when there's no logo to show instead.
   const Logo = (
     <Link href="/" className="flex items-center gap-2.5 group">
       {brand?.logoUrl ? (
         <img
           src={brand.logoUrl}
           alt={brand.name ?? 'The Steak Sheikh'}
-          className="h-14 w-14 sm:h-16 sm:w-16 rounded-full object-cover"
+          className="h-14 sm:h-16 w-auto max-w-[220px] object-contain"
         />
       ) : (
-        <span
-          className="flex h-10 w-10 items-center justify-center rounded-full"
-          style={{ backgroundColor: accent }}
-        >
-          <Flame className="h-5 w-5" style={{ color: '#0a0a0a' }} />
-        </span>
-      )}
-      <span className="leading-none">
-        <span className="block font-heading text-lg font-extrabold tracking-tight text-white">
-          {name}
-        </span>
-        {brand?.tagline && (
-          <span className="block text-[9px] font-semibold uppercase tracking-[0.22em] text-white/45">
-            {brand.tagline}
+        <>
+          <span
+            className="flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: accent }}
+          >
+            <Flame className="h-5 w-5" style={{ color: '#0a0a0a' }} />
           </span>
-        )}
-      </span>
+          <span className="leading-none">
+            <span className="block font-heading text-lg font-extrabold tracking-tight text-white">
+              {name}
+            </span>
+            {brand?.tagline && (
+              <span className="block text-[9px] font-semibold uppercase tracking-[0.22em] text-white/45">
+                {brand.tagline}
+              </span>
+            )}
+          </span>
+        </>
+      )}
     </Link>
   );
 
@@ -241,9 +246,6 @@ export function StorefrontShell({
             {/* Brand */}
             <div className="md:col-span-1">
               {Logo}
-              {brand?.tagline && (
-                <p className="mt-4 text-sm text-white/45 max-w-[200px]">{brand.tagline}</p>
-              )}
               <div className="mt-5 flex items-center gap-2">
                 <button onClick={() => soon('Facebook')} aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
                   <Facebook className="h-4 w-4" />
