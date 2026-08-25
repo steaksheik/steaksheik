@@ -102,7 +102,7 @@ export function StorefrontShell({
         <img
           src={brand.logoUrl}
           alt={brand.name ?? 'The Steak Sheikh'}
-          className="h-14 sm:h-16 w-auto max-w-[220px] object-contain"
+          className="h-20 sm:h-24 w-auto max-w-[260px] object-contain"
         />
       ) : (
         <>
@@ -134,7 +134,7 @@ export function StorefrontShell({
         className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md"
         style={{ backgroundColor: `${primary}f2` }}
       >
-        <div className="mx-auto flex h-[76px] sm:h-[84px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-[92px] sm:h-[104px] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {Logo}
 
           {/* Desktop nav */}

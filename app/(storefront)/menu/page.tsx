@@ -69,7 +69,7 @@ export default async function MenuPage({
       </section>
 
       {/* Filter bar */}
-      <section className="sticky top-16 z-40 backdrop-blur-md border-b border-white/5" style={{ backgroundColor: `${background}f2` }}>
+      <section className="sticky top-[92px] sm:top-[104px] z-40 backdrop-blur-md border-b border-white/5" style={{ backgroundColor: `${background}f2` }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <MenuCategoryFilter categories={categories.map(c => ({ name: c.name, slug: c.slug }))} activeSlug={activeSlug} accent={accent} />
         </div>
