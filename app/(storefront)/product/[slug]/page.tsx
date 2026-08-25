@@ -5,6 +5,7 @@ import { getDefaultTenant, getBrand, getProductBySlug, formatPrice } from '@/lib
 import { getSiteUrl, jsonLdScriptProps } from '@/lib/seo';
 import { ChevronLeft, Flame } from 'lucide-react';
 import { ProductConfigurator } from './product-configurator';
+import { DEFAULT_BACKGROUND } from '../../theme-context';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,7 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const accent = brand?.theme?.accentColor ?? '#c9a96e';
+  const background = brand?.theme?.backgroundColor ?? DEFAULT_BACKGROUND;
 
   // Serialize Decimal fields to numbers for client component
   const serializedVariants = product.variants.map(v => ({
@@ -92,7 +94,7 @@ export default async function ProductPage({
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a]">
+    <div className="min-h-screen" style={{ backgroundColor: background }}>
       <script {...jsonLdScriptProps(productJsonLd)} />
       {/* Breadcrumb */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">

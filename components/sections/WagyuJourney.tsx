@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, useReducedMotion } from 'framer-motion';
-import { useAccentColor } from '@/app/(storefront)/theme-context';
+import { useAccentColor, useBrandTheme } from '@/app/(storefront)/theme-context';
 
 export interface JourneyStep {
   /** 1-based step index, rendered as the giant faded numeral. */
@@ -294,7 +294,7 @@ export function WagyuJourney({
 }: {
   steps?: JourneyStep[];
 }) {
-  const ACCENT = useAccentColor();
+  const { accentColor: ACCENT, backgroundColor: BG } = useBrandTheme();
   const [active, setActive] = useState(1);
   const total = steps.length;
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -331,13 +331,16 @@ export function WagyuJourney({
   };
 
   return (
-    <div className="relative bg-[#0a0a0a] text-white">
+    <div className="relative text-white" style={{ backgroundColor: BG }}>
       {/* Sticky floating step counter */}
       <div
         className="pointer-events-none fixed right-4 top-24 z-40 sm:right-8"
         aria-hidden="true"
       >
-        <div className="flex items-baseline gap-1 rounded-full border border-white/10 bg-[#0a0a0a]/70 px-4 py-2 backdrop-blur-md">
+        <div
+          className="flex items-baseline gap-1 rounded-full border border-white/10 px-4 py-2 backdrop-blur-md"
+          style={{ backgroundColor: `${BG}b3` }}
+        >
           <span
             className="font-heading text-xl leading-none"
             style={{ color: ACCENT }}

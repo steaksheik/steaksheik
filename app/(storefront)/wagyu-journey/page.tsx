@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import { getSiteUrl } from '@/lib/seo';
 import { getDefaultTenant, getBrand } from '@/lib/storefront';
-import { DEFAULT_ACCENT } from '../theme-context';
+import { DEFAULT_ACCENT, DEFAULT_BACKGROUND } from '../theme-context';
 import { WagyuJourney } from '@/components/sections/WagyuJourney';
 
 export const dynamic = 'force-dynamic';
@@ -26,15 +26,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Full-screen cinematic hero introducing the journey. */
-function JourneyHero({ accent }: { accent: string }) {
+function JourneyHero({ accent, background }: { accent: string; background: string }) {
   return (
-    <section className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0a0a0a] px-4 text-center text-white">
+    <section
+      className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 text-center text-white"
+      style={{ backgroundColor: background }}
+    >
       {/* Atmospheric background wash */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            'radial-gradient(ellipse 70% 60% at 50% 30%, rgba(201,169,110,0.14), transparent 65%), linear-gradient(180deg, #0a0a0a 40%, #0d0d0d 100%)',
+          background: `radial-gradient(ellipse 70% 60% at 50% 30%, rgba(201,169,110,0.14), transparent 65%), ${background}`,
         }}
       />
       <div className="relative z-10 mx-auto max-w-4xl">
@@ -69,9 +71,9 @@ function JourneyHero({ accent }: { accent: string }) {
  * Sonny's founder story — the personal introduction that sets up the journey.
  * Portrait on the right, "Steak Perfection" letter on the left.
  */
-function SonnyStory({ accent }: { accent: string }) {
+function SonnyStory({ accent, background }: { accent: string; background: string }) {
   return (
-    <section className="relative overflow-hidden bg-[#0a0a0a] py-16 text-white sm:py-24">
+    <section className="relative overflow-hidden py-16 text-white sm:py-24" style={{ backgroundColor: background }}>
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
         {/* Letter */}
         <div className="order-2 lg:order-1">
@@ -152,11 +154,12 @@ export default async function WagyuJourneyPage() {
   const tenant = await getDefaultTenant();
   const brand = await getBrand(tenant.id);
   const accent = brand?.theme?.accentColor ?? DEFAULT_ACCENT;
+  const background = brand?.theme?.backgroundColor ?? DEFAULT_BACKGROUND;
 
   return (
-    <main className="bg-[#0a0a0a]">
-      <JourneyHero accent={accent} />
-      <SonnyStory accent={accent} />
+    <main style={{ backgroundColor: background }}>
+      <JourneyHero accent={accent} background={background} />
+      <SonnyStory accent={accent} background={background} />
       <WagyuJourney />
     </main>
   );
