@@ -235,7 +235,7 @@ export default function NotificationsPage() {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="rounded-lg border p-4">
               <p className="text-sm font-medium">Sender Name</p>
-              <p className="text-sm text-muted-foreground mt-1">The Steak Sheikh</p>
+              <p className="text-sm text-muted-foreground mt-1">Sonny's Sweet &amp; Savory</p>
             </div>
             <div className="rounded-lg border p-4">
               <p className="text-sm font-medium">Brand Colours</p>
@@ -249,7 +249,7 @@ export default function NotificationsPage() {
             <div className="rounded-lg border p-4 sm:col-span-2">
               <p className="text-sm font-medium">Email Template Preview</p>
               <p className="text-xs text-muted-foreground mt-1">
-                All emails use a consistent branded template with The Steak Sheikh header (black background, gold accent),
+                All emails use a consistent branded template with a Sonny's Sweet &amp; Savory header (black background, gold accent),
                 content area, and a subtle footer. Each notification type has its own styled content block.
               </p>
             </div>

@@ -70,7 +70,7 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
 
       // Shared sender identity (used by all providers)
       { key: 'fromEmail', label: 'From Address', kind: 'config', required: true, placeholder: 'orders@yourdomain.com', help: 'The address recipients see. Must be verified/authorised with your provider.' },
-      { key: 'fromName', label: 'From Name', kind: 'config', placeholder: 'The Steak Sheikh' },
+      { key: 'fromName', label: 'From Name', kind: 'config', placeholder: "Sonny's Sweet & Savory" },
 
       // ── Amazon SES ──
       { key: 'accessKeyId', label: 'AWS Access Key ID', kind: 'credential', required: true, placeholder: 'AKIA...', showIf: { key: 'provider', in: ['ses'] } },

@@ -279,7 +279,7 @@ export default function CampaignsPage() {
               <TabsContent value="SMS" className="space-y-3 pt-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs">Message</Label>
-                  <Textarea rows={4} maxLength={480} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="20% off this weekend at The Steak Sheikh — order at thesteaksheikh.com" />
+                  <Textarea rows={4} maxLength={480} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="20% off this weekend at Sonny's Sweet & Savory — order at sonnys.uk" />
                   <p className="text-[11px] text-muted-foreground">{message.length}/480 — &quot;Reply STOP to opt out&quot; is added automatically.</p>
                 </div>
               </TabsContent>

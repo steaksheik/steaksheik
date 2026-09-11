@@ -1,5 +1,5 @@
 
-// Steak Sheikh service worker — app-shell caching + offline fallback only.
+// Sonny's Sweet & Savory service worker — app-shell caching + offline fallback only.
 // Deliberately does NOT touch /api/* or /admin/* — those must always hit the
 // network so prices, stock, cart, orders and admin data are never stale.
 const CACHE_VERSION = 'v1';

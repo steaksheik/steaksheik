@@ -477,7 +477,7 @@ export function HomeClient({
 
           <div className="relative z-10 flex min-h-[360px] flex-col justify-center gap-4 p-8 sm:p-12 lg:max-w-2xl">
             <span className="font-heading text-xs uppercase tracking-[0.35em]" style={{ color: ACCENT }}>
-              A Steak Sheikh Story
+              A {brandName} Story
             </span>
             <h2 className="font-heading text-4xl font-extrabold uppercase leading-none tracking-tight sm:text-5xl lg:text-6xl">
               The Ten Thousand<br />Mile Journey
@@ -517,7 +517,7 @@ export function HomeClient({
               </div>
             </div>
             <div className="relative min-h-[200px]">
-              <img src="/sonny-steak-sheikh.jpg" alt="Sonny, The Steak Sheikh — Executive Chef & Founder" className="absolute inset-0 h-full w-full object-cover object-top" />
+              <img src="/sonny-steak-sheikh.jpg" alt={`Sonny — Executive Chef & Founder, ${brandName}`} className="absolute inset-0 h-full w-full object-cover object-top" />
               <div className="absolute inset-0 bg-gradient-to-r from-[#0a0a0a] to-transparent" />
             </div>
           </div>

@@ -87,7 +87,7 @@ function SidebarContent({
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.permission || hasPermission(item.permission)
   );
-  const brandName = brand?.name || 'The Steak Sheikh';
+  const brandName = brand?.name || "Sonny's Sweet & Savory";
 
   return (
     <div className="flex h-full flex-col">

@@ -150,6 +150,9 @@ export async function sendEmailCampaign(params: {
 
   const { emailWrapper } = await import('@/lib/notifications/email-service');
 
+  const brand = await prisma.brand.findFirst({ where: { tenantId: params.tenantId }, select: { name: true } });
+  const brandName = brand?.name || "Sonny's Sweet & Savory";
+
   const flyerHtml = params.flyerUrl
     ? `<img src="${params.flyerUrl}" alt="" style="display:block;width:100%;max-width:536px;height:auto;border-radius:8px;margin:0 0 20px;" />`
     : '';
@@ -162,7 +165,7 @@ export async function sendEmailCampaign(params: {
       ${flyerHtml}
       ${params.bodyHtml}
       <p style="color:#999;font-size:11px;margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
-        You're receiving this because you opted in to marketing emails from The Steak Sheikh.
+        You're receiving this because you opted in to marketing emails from ${brandName}.
         <a href="${unsubscribeUrl}" style="color:#999;">Unsubscribe</a>
       </p>
     `);

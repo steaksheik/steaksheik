@@ -61,13 +61,32 @@ async function trySendViaConfiguredProvider(
   }
 }
 
-function getSenderInfo() {
+const DEFAULT_BRAND_NAME = "Sonny's Sweet & Savory";
+
+/** Resolve the tenant's brand identity for email templates (name + absolute logo URL). */
+async function getBrandInfo(): Promise<{ name: string; logoUrl: string | null }> {
+  try {
+    const { prisma } = await import('@/lib/db');
+    const brand = await prisma.brand.findFirst({ select: { name: true, logoUrl: true } });
+    const name = brand?.name || DEFAULT_BRAND_NAME;
+    const raw = brand?.logoUrl;
+    if (!raw) return { name, logoUrl: null };
+    if (/^https?:\/\//i.test(raw)) return { name, logoUrl: raw };
+    const { getSiteUrl } = await import('@/lib/seo');
+    return { name, logoUrl: `${getSiteUrl()}${raw.startsWith('/') ? '' : '/'}${raw}` };
+  } catch {
+    return { name: DEFAULT_BRAND_NAME, logoUrl: null };
+  }
+}
+
+async function getSenderInfo() {
   const appUrl = process.env.NEXTAUTH_URL || '';
   let hostname = 'darkkitchen.abacusai.app';
   try { hostname = new URL(appUrl).hostname; } catch {}
+  const { name } = await getBrandInfo();
   return {
     senderEmail: `noreply@${hostname}`,
-    senderAlias: 'The Steak Sheikh',
+    senderAlias: name,
   };
 }
 
@@ -93,7 +112,7 @@ export async function sendNotificationEmail(opts: SendEmailOpts): Promise<boolea
     return false;
   }
 
-  const { senderEmail, senderAlias } = getSenderInfo();
+  const { senderEmail, senderAlias } = await getSenderInfo();
 
   try {
     const res = await fetch('https://apps.abacus.ai/api/sendNotificationEmail', {
@@ -133,35 +152,20 @@ export async function sendNotificationEmail(opts: SendEmailOpts): Promise<boolea
 
 // ── Email Templates ──────────────────────────────────────
 
-/** Resolve the tenant's configured brand logo to an absolute URL (email clients can't load relative paths). */
-async function getBrandLogoUrl(): Promise<string | null> {
-  try {
-    const { prisma } = await import('@/lib/db');
-    const brand = await prisma.brand.findFirst({ select: { logoUrl: true } });
-    const raw = brand?.logoUrl;
-    if (!raw) return null;
-    if (/^https?:\/\//i.test(raw)) return raw;
-    const { getSiteUrl } = await import('@/lib/seo');
-    return `${getSiteUrl()}${raw.startsWith('/') ? '' : '/'}${raw}`;
-  } catch {
-    return null;
-  }
-}
-
 export async function emailWrapper(content: string): Promise<string> {
-  const logoUrl = await getBrandLogoUrl();
+  const { name, logoUrl } = await getBrandInfo();
   return `
     <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff;">
       <div style="background: #0a0a0a; padding: 24px 32px; text-align: center;">
-        ${logoUrl ? `<img src="${logoUrl}" alt="The Steak Sheikh" width="56" height="56" style="height: 56px; width: 56px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; display: block;" />` : ''}
-        <h1 style="color: #c9a96e; margin: 0; font-size: 24px; letter-spacing: 2px;">THE STEAK SHEIKH</h1>
+        ${logoUrl ? `<img src="${logoUrl}" alt="${name}" width="56" height="56" style="height: 56px; width: 56px; border-radius: 50%; object-fit: cover; margin: 0 auto 12px; display: block;" />` : ''}
+        <h1 style="color: #c9a96e; margin: 0; font-size: 24px; letter-spacing: 2px;">${name.toUpperCase()}</h1>
         <p style="color: #888; margin: 4px 0 0; font-size: 12px;">Made with love.</p>
       </div>
       <div style="padding: 32px;">
         ${content}
       </div>
       <div style="background: #f9f9f9; padding: 20px 32px; text-align: center; border-top: 1px solid #eee;">
-        <p style="color: #999; font-size: 11px; margin: 0;">The Steak Sheikh &mdash; Made with love.</p>
+        <p style="color: #999; font-size: 11px; margin: 0;">${name} &mdash; Made with love.</p>
       </div>
     </div>
   `;
@@ -253,6 +257,7 @@ export async function sendOrderStatusUpdate(order: {
 }) {
   const info = STATUS_MESSAGES[order.status];
   if (!info) return false;
+  const { name } = await getBrandInfo();
 
   const content = `
     <h2 style="color: #0a0a0a; margin: 0 0 8px;">Order ${info.title}</h2>
@@ -263,7 +268,7 @@ export async function sendOrderStatusUpdate(order: {
       <p style="margin: 4px 0;"><strong>Status:</strong> <span style="color: #c9a96e; font-weight: bold;">${info.title.toUpperCase()}</span></p>
       <p style="margin: 4px 0;"><strong>Total:</strong> ${fmtPrice(Number(order.total))}</p>
     </div>
-    <p style="color: #666; font-size: 13px;">Thank you for choosing The Steak Sheikh.</p>
+    <p style="color: #666; font-size: 13px;">Thank you for choosing ${name}.</p>
   `;
 
   return sendNotificationEmail({
@@ -335,8 +340,9 @@ export async function sendWelcomeEmail(customer: {
   email: string;
   firstName: string;
 }) {
+  const { name } = await getBrandInfo();
   const content = `
-    <h2 style="color: #0a0a0a; margin: 0 0 8px;">Welcome to The Steak Sheikh</h2>
+    <h2 style="color: #0a0a0a; margin: 0 0 8px;">Welcome to ${name}</h2>
     <p style="color: #666; margin: 0 0 20px;">Hi ${customer.firstName},</p>
     <p style="margin: 0 0 20px;">Thank you for creating an account with us. You're now part of our exclusive community of steak enthusiasts.</p>
     <div style="background: #f8f6f1; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
@@ -349,12 +355,12 @@ export async function sendWelcomeEmail(customer: {
       </ul>
     </div>
     <p style="margin: 0 0 20px;">Ready to order? Browse our premium cuts and experience perfection.</p>
-    <p style="color: #666; font-size: 13px;">Regards,<br/>The Steak Sheikh Team</p>
+    <p style="color: #666; font-size: 13px;">Regards,<br/>${name} Team</p>
   `;
 
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_WELCOME_EMAIL || '',
-    subject: 'Welcome to The Steak Sheikh - Made with Love',
+    subject: `Welcome to ${name} - Made with Love`,
     body: await emailWrapper(content),
     recipientEmail: customer.email,
   });
@@ -362,6 +368,7 @@ export async function sendWelcomeEmail(customer: {
 
 // ── Customer email verification ───────────────────────────
 export async function sendCustomerVerificationEmail(params: { email: string; firstName: string; verifyUrl: string }) {
+  const { name } = await getBrandInfo();
   const content = `
     <h2 style="color: #0a0a0a; margin: 0 0 8px;">Confirm your email address</h2>
     <p style="color: #666; margin: 0 0 20px;">Hi ${params.firstName || 'there'},</p>
@@ -371,7 +378,7 @@ export async function sendCustomerVerificationEmail(params: { email: string; fir
   `;
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_CUSTOMER_EMAIL_VERIFY || '',
-    subject: 'Confirm your email — The Steak Sheikh',
+    subject: `Confirm your email — ${name}`,
     body: await emailWrapper(content),
     recipientEmail: params.email,
   });
@@ -389,16 +396,17 @@ function ctaButtonHtml(url: string, label: string): string {
 
 // ── Admin invite -> new staff User ────────────────────────
 export async function sendAdminInviteEmail(params: { email: string; firstName: string; resetUrl: string }) {
+  const { name } = await getBrandInfo();
   const content = `
     <h2 style="color: #0a0a0a; margin: 0 0 8px;">You've been added to the team</h2>
     <p style="color: #666; margin: 0 0 20px;">Hi ${params.firstName},</p>
-    <p style="margin: 0 0 20px;">An account has been created for you on The Steak Sheikh's admin dashboard. Set a password to get started.</p>
+    <p style="margin: 0 0 20px;">An account has been created for you on ${name}'s admin dashboard. Set a password to get started.</p>
     ${ctaButtonHtml(params.resetUrl, 'Set Your Password')}
     <p style="color: #999; font-size: 12px;">This link expires in 7 days. If you weren't expecting this, you can safely ignore it.</p>
   `;
   return sendNotificationEmail({
     notificationId: process.env.NOTIF_ID_ADMIN_INVITE || '',
-    subject: "You've been invited to The Steak Sheikh admin dashboard",
+    subject: `You've been invited to ${name} admin dashboard`,
     body: await emailWrapper(content),
     recipientEmail: params.email,
   });
