@@ -4,12 +4,17 @@ import { ok } from '@/lib/api/response';
 import { requirePermission } from '@/lib/auth/context';
 import { prisma } from '@/lib/db';
 import { pluginRegistry } from '@/lib/plugins/registry';
+import { metaFor } from '@/lib/plugins/service-fields';
 
 export const dynamic = 'force-dynamic';
 
 export const GET = withRoute(async (req: NextRequest) => {
   const ctx = await requirePermission(req, 'services:platform:read');
-  const catalog = pluginRegistry.catalog();
+  // Adapters marked `hidden` in service-fields.ts are stub integrations with
+  // no real capture/invalidate/injection wired up elsewhere -- kept in the
+  // registry so they still work if a row somehow exists, just not surfaced
+  // as "not configured" clutter in Platform Services / System Health.
+  const catalog = pluginRegistry.catalog().filter((c) => !metaFor(c.serviceType)?.hidden);
   const configured = await prisma.platformService.findMany({ where: { tenantId: ctx.tenantId } });
   const byType = new Map(configured.map((s) => [s.serviceType, s]));
   const services = catalog.map((c) => {

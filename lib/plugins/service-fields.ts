@@ -41,6 +41,16 @@ export interface ServiceMeta {
   docsUrl?: string;
   fields: ServiceFieldDef[];
   presets?: ServicePreset[];
+  /**
+   * Set true to hide this service from Admin -> Platform Services / System
+   * Health without deleting its adapter, types, or this definition. Use for
+   * services whose adapter is currently a connectivity-test-only stub (no
+   * real capture/invalidate/injection wired up elsewhere in the app) so the
+   * admin isn't shown a permanently "not configured" item for something that
+   * wouldn't do anything if configured. Flip back to false/omit to bring it
+   * back once the adapter is actually finished.
+   */
+  hidden?: boolean;
 }
 
 export const SERVICE_META: Record<string, ServiceMeta> = {
@@ -144,6 +154,11 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
       { key: 'apiKey', label: 'API Key', kind: 'credential', secret: true, required: true, placeholder: 'AIza...' },
     ],
   },
+  // Hidden: CloudFrontCdnAdapter.invalidate() is a stub (logs only, purges
+  // nothing) and Vercel already provides a global CDN/edge cache for this
+  // deploy — configuring this today would store credentials that do nothing.
+  // Revisit if this ever moves off Vercel or needs cache control CloudFront
+  // actually provides.
   CDN: {
     serviceType: 'CDN',
     category: 'Infrastructure',
@@ -155,7 +170,12 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
       { key: 'distributionId', label: 'Distribution ID', kind: 'config', required: true, placeholder: 'E1ABCDEF...' },
       { key: 'domain', label: 'Distribution Domain', kind: 'config', required: true, placeholder: 'd123.cloudfront.net' },
     ],
+    hidden: true,
   },
+  // Hidden: same as CDN above -- CloudflareCdnAdapter.invalidate() is a stub,
+  // and DNS for this domain is already managed wherever it's pointed at
+  // Vercel. Revisit only if Cloudflare-specific features (WAF, etc.) are
+  // actually needed.
   DNS_CDN: {
     serviceType: 'DNS_CDN',
     category: 'Infrastructure',
@@ -167,6 +187,7 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
       { key: 'apiToken', label: 'API Token', kind: 'credential', secret: true, required: true },
       { key: 'zoneId', label: 'Zone ID', kind: 'config', required: true },
     ],
+    hidden: true,
   },
   ANALYTICS_GA4: {
     serviceType: 'ANALYTICS_GA4',
@@ -205,6 +226,11 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
       { key: 'containerId', label: 'Container ID', kind: 'config', required: true, placeholder: 'GTM-XXXXXX' },
     ],
   },
+  // Hidden: PostHogAdapter never overrides getClientSnippet(), so unlike GA4/
+  // GTM it's never actually injected into the storefront -- configuring it
+  // would store a valid key that captures nothing. GA4 above already covers
+  // traffic analytics and is fully wired. Revisit if getClientSnippet() (and
+  // the injection point in storefront layout.tsx) is actually implemented.
   ANALYTICS_PH: {
     serviceType: 'ANALYTICS_PH',
     category: 'Analytics',
@@ -216,7 +242,12 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
       { key: 'apiKey', label: 'Project API Key', kind: 'credential', secret: true, required: true, placeholder: 'phc_...' },
       { key: 'host', label: 'Instance Host', kind: 'config', placeholder: 'https://eu.posthog.com' },
     ],
+    hidden: true,
   },
+  // Hidden: SentryAdapter.captureError()/captureMessage() only log to the
+  // server console -- nothing in the app (no error boundary, no API error
+  // handler) calls them yet either. Configuring a DSN today would not send
+  // a single error to Sentry. Revisit once those are actually wired up.
   ERROR_TRACKING: {
     serviceType: 'ERROR_TRACKING',
     category: 'Observability',
@@ -227,7 +258,10 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     fields: [
       { key: 'dsn', label: 'DSN', kind: 'credential', secret: true, required: true, placeholder: 'https://...@sentry.io/...' },
     ],
+    hidden: true,
   },
+  // Hidden: same as ERROR_TRACKING above -- BetterStackAdapter's capture
+  // methods are console-only stubs, and nothing pings it for uptime checks.
   UPTIME: {
     serviceType: 'UPTIME',
     category: 'Observability',
@@ -238,6 +272,7 @@ export const SERVICE_META: Record<string, ServiceMeta> = {
     fields: [
       { key: 'sourceToken', label: 'Source Token', kind: 'credential', secret: true, required: true },
     ],
+    hidden: true,
   },
 };
 
