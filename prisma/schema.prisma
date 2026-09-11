@@ -697,6 +697,10 @@ model Product {
   sku                String?
   status             ProductStatus @default(DRAFT)
   isFeatured         Boolean       @default(false)
+  // Admin-controlled tag (Catalogue -> product editor) for the storefront's
+  // /specials page — independent of compareAtPrice, so a chef's special or
+  // promotional bundle can be flagged without needing a "was/now" price.
+  isSpecial          Boolean       @default(false)
   isAvailable        Boolean       @default(true)
   sortOrder          Int           @default(0)
   nutritionalInfo    Json?
@@ -724,6 +728,7 @@ model Product {
   @@index([tenantId, categoryId])
   @@index([tenantId, status])
   @@index([tenantId, isFeatured])
+  @@index([tenantId, isSpecial])
   @@index([tenantId, status, sortOrder])
   @@map("products")
 }

@@ -239,6 +239,19 @@ export async function getFeaturedProducts(tenantId: string, limit = 6) {
   });
 }
 
+/** Fetch published products tagged as a special (Admin -> Catalogue -> product editor). */
+export async function getSpecialProducts(tenantId: string) {
+  return prisma.product.findMany({
+    where: { tenantId, status: 'PUBLISHED', isSpecial: true },
+    orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }],
+    include: {
+      category: { select: { id: true, name: true, slug: true } },
+      images: { orderBy: { sortOrder: 'asc' } },
+      _count: { select: { variants: true, modifierGroups: true } },
+    },
+  });
+}
+
 /** Fetch published products, optionally filtered by category slug. */
 export async function getProducts(tenantId: string, categorySlug?: string) {
   const where: Record<string, unknown> = { tenantId, status: 'PUBLISHED' };

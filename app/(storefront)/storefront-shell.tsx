@@ -166,7 +166,7 @@ export function StorefrontShell({
                 </div>
               )}
             </div>
-            <Link href="/menu?category=steaks" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
+            <Link href="/specials" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">
               Specials
             </Link>
             <Link href="/#why" className="text-[13px] font-semibold uppercase tracking-wide text-white/80 hover:text-white transition-colors">

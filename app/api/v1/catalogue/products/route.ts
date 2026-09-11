@@ -26,6 +26,7 @@ export const GET = withRoute(async (req: NextRequest) => {
   const categoryId = url.searchParams.get('categoryId');
   const status = url.searchParams.get('status');
   const featured = url.searchParams.get('featured');
+  const special = url.searchParams.get('special');
   const search = url.searchParams.get('search');
   const limit = Math.min(Number(url.searchParams.get('limit')) || 50, 100);
   const skip = Number(url.searchParams.get('skip')) || 0;
@@ -35,6 +36,7 @@ export const GET = withRoute(async (req: NextRequest) => {
   if (status) where.status = status;
   else if (!isAdmin) where.status = 'PUBLISHED';
   if (featured === 'true') where.isFeatured = true;
+  if (special === 'true') where.isSpecial = true;
   if (search) {
     where.OR = [
       { name: { contains: search, mode: 'insensitive' } },
@@ -73,6 +75,7 @@ const createSchema = z.object({
   sku: z.string().max(100).optional().nullable(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED', 'OUT_OF_STOCK']).default('DRAFT'),
   isFeatured: z.boolean().default(false),
+  isSpecial: z.boolean().default(false),
   isAvailable: z.boolean().default(true),
   sortOrder: z.number().int().default(0),
   nutritionalInfo: z.record(z.unknown()).optional().nullable(),
@@ -111,6 +114,7 @@ export const POST = withRoute(async (req: NextRequest) => {
       sku: body.sku,
       status: body.status,
       isFeatured: body.isFeatured,
+      isSpecial: body.isSpecial,
       isAvailable: body.isAvailable,
       sortOrder: body.sortOrder,
       nutritionalInfo: (body.nutritionalInfo ?? null) as never,

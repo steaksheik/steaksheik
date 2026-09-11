@@ -33,6 +33,7 @@ import {
   Image as ImageIcon,
   RefreshCw,
   SlidersHorizontal,
+  Tag,
 } from 'lucide-react';
 
 interface Category {
@@ -57,6 +58,7 @@ interface Product {
   currency: string;
   status: string;
   isFeatured: boolean;
+  isSpecial: boolean;
   isAvailable: boolean;
   sortOrder: number;
   categoryId: string;
@@ -132,6 +134,7 @@ export default function CataloguePage() {
   const [prodCategoryId, setProdCategoryId] = useState('');
   const [prodStatus, setProdStatus] = useState('DRAFT');
   const [prodFeatured, setProdFeatured] = useState(false);
+  const [prodSpecial, setProdSpecial] = useState(false);
   const [prodAvailable, setProdAvailable] = useState(true);
   const [prodImageUrl, setProdImageUrl] = useState('');
   const [prodAllergens, setProdAllergens] = useState<string[]>([]);
@@ -241,6 +244,7 @@ export default function CataloguePage() {
     setProdCategoryId(prod?.categoryId ?? categories[0]?.id ?? '');
     setProdStatus(prod?.status ?? 'DRAFT');
     setProdFeatured(prod?.isFeatured ?? false);
+    setProdSpecial(prod?.isSpecial ?? false);
     setProdAvailable(prod?.isAvailable ?? true);
     setProdImageUrl(prod?.images?.[0]?.url ?? '');
     setProdAllergens(prod?.allergens ?? []);
@@ -277,7 +281,7 @@ export default function CataloguePage() {
         basePrice: price,
         compareAtPrice: comparePrice,
         categoryId: prodCategoryId, status: prodStatus,
-        isFeatured: prodFeatured, isAvailable: prodAvailable,
+        isFeatured: prodFeatured, isSpecial: prodSpecial, isAvailable: prodAvailable,
         allergens: prodAllergens, allergensConfirmed: prodAllergensConfirmed,
       };
       const url = editingProd ? `/api/v1/catalogue/products/${editingProd.id}` : '/api/v1/catalogue/products';
@@ -448,6 +452,7 @@ export default function CataloguePage() {
                         <div className="flex items-center gap-2">
                           <p className="text-sm font-medium truncate">{prod.name}</p>
                           {prod.isFeatured && <Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500 shrink-0" />}
+                          {prod.isSpecial && <Tag className="h-3.5 w-3.5 text-emerald-500 fill-emerald-500/20 shrink-0" />}
                         </div>
                         <p className="text-xs text-muted-foreground">{prod.category.name} • {prod._count.variants} variant{prod._count.variants !== 1 ? 's' : ''}</p>
                       </div>
@@ -630,6 +635,11 @@ export default function CataloguePage() {
                 <div className="flex items-center gap-2">
                   <Switch checked={prodFeatured} onCheckedChange={setProdFeatured} />
                   <Label className="text-sm">Featured</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={prodSpecial} onCheckedChange={setProdSpecial} />
+                  <Label className="text-sm">Special</Label>
+                  <span className="text-xs text-muted-foreground">— shows on the storefront&apos;s Specials page</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch checked={prodAvailable} onCheckedChange={setProdAvailable} />

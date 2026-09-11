@@ -49,6 +49,7 @@ const updateSchema = z.object({
   sku: z.string().max(100).optional().nullable(),
   status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED', 'OUT_OF_STOCK']).optional(),
   isFeatured: z.boolean().optional(),
+  isSpecial: z.boolean().optional(),
   isAvailable: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
   nutritionalInfo: z.record(z.unknown()).optional().nullable(),
