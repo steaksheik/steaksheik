@@ -8,16 +8,20 @@ import { WagyuJourney } from '@/components/sections/WagyuJourney';
 export const dynamic = 'force-dynamic';
 
 export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getDefaultTenant();
+  const brand = await getBrand(tenant.id);
+  const name = brand?.name || "Sonny's Sweet & Savory";
   const siteUrl = getSiteUrl();
-  const title = 'The Ten Thousand Mile Journey | The Steak Sheikh';
+  const shortTitle = 'The Ten Thousand Mile Journey';
   const description =
     "Sonny's story of travelling to the other side of the world to find the finest A5 full-blood Wagyu — audited first-hand, GM-free and grass-fed, just for you.";
   return {
-    title,
+    // Root layout's title template appends "| <name>" automatically.
+    title: shortTitle,
     description,
     alternates: { canonical: `${siteUrl}/wagyu-journey` },
     openGraph: {
-      title,
+      title: `${shortTitle} | ${name}`,
       description,
       url: `${siteUrl}/wagyu-journey`,
       type: 'article',
@@ -26,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** Full-screen cinematic hero introducing the journey. */
-function JourneyHero({ accent, background }: { accent: string; background: string }) {
+function JourneyHero({ accent, background, brandName }: { accent: string; background: string; brandName: string }) {
   return (
     <section
       className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 text-center text-white"
@@ -44,7 +48,7 @@ function JourneyHero({ accent, background }: { accent: string; background: strin
           className="font-heading text-sm uppercase tracking-[0.45em] sm:text-base"
           style={{ color: accent }}
         >
-          The Steak Sheikh
+          {brandName}
         </p>
         <h1 className="mt-6 font-heading text-6xl uppercase leading-[0.92] tracking-tight sm:text-7xl lg:text-8xl xl:text-9xl">
           The Ten Thousand
@@ -71,7 +75,7 @@ function JourneyHero({ accent, background }: { accent: string; background: strin
  * Sonny's founder story — the personal introduction that sets up the journey.
  * Portrait on the right, "Steak Perfection" letter on the left.
  */
-function SonnyStory({ accent, background }: { accent: string; background: string }) {
+function SonnyStory({ accent, background, brandName }: { accent: string; background: string; brandName: string }) {
   return (
     <section className="relative overflow-hidden py-16 text-white sm:py-24" style={{ backgroundColor: background }}>
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
@@ -91,7 +95,7 @@ function SonnyStory({ accent, background }: { accent: string; background: string
 
           <div className="mt-8 space-y-4 text-base leading-relaxed text-white/70 sm:text-lg">
             <p>
-              Welcome to The Steak Sheikh, the home of the finest hand-selected,
+              Welcome to {brandName}, the home of the finest hand-selected,
               free-range, organic grass-fed beef and meats served in the British
               Isles, cooked on lava rocks in a cooking tradition as old as time
               itself.
@@ -104,8 +108,8 @@ function SonnyStory({ accent, background }: { accent: string; background: string
               My love for the world&apos;s finest beef is shared by my dedicated
               team of passionate chefs who will carefully hand-select your chosen
               steak, and by our enthusiastic front-of-house team, who are here to
-              help you get the very best from the rock and your personal Steak
-              Sheikh adventure.
+              help you get the very best from the rock and your personal Sonny&apos;s
+              adventure.
             </p>
             <p>
               My late father&apos;s mantra drummed into me four decades ago when I
@@ -117,14 +121,13 @@ function SonnyStory({ accent, background }: { accent: string; background: string
             >
               &lsquo;Made with Love&rsquo;
             </p>
-            <p>Welcome to The Steak Sheikh, Welcome to Steak.</p>
+            <p>Welcome to {brandName}, Welcome to Steak.</p>
           </div>
 
           <div className="mt-8">
             <p className="font-accent text-2xl font-semibold italic text-white">
               Sonny
             </p>
-            <p className="mt-1 text-sm text-white/60">(The Steak Sheikh)</p>
             <p className="text-sm text-white/60">Executive Chef &amp; Founder</p>
           </div>
         </div>
@@ -137,7 +140,7 @@ function SonnyStory({ accent, background }: { accent: string; background: string
           >
             <Image
               src="/sonny-steak-sheikh.jpg"
-              alt="Sonny, The Steak Sheikh — Executive Chef & Founder"
+              alt={`Sonny — Executive Chef & Founder, ${brandName}`}
               fill
               sizes="(max-width: 1024px) 90vw, 45vw"
               className="object-cover object-top"
@@ -155,11 +158,12 @@ export default async function WagyuJourneyPage() {
   const brand = await getBrand(tenant.id);
   const accent = brand?.theme?.accentColor ?? DEFAULT_ACCENT;
   const background = brand?.theme?.backgroundColor ?? DEFAULT_BACKGROUND;
+  const brandName = brand?.name || "Sonny's Sweet & Savory";
 
   return (
     <main style={{ backgroundColor: background }}>
-      <JourneyHero accent={accent} background={background} />
-      <SonnyStory accent={accent} background={background} />
+      <JourneyHero accent={accent} background={background} brandName={brandName} />
+      <SonnyStory accent={accent} background={background} brandName={brandName} />
       <WagyuJourney />
     </main>
   );

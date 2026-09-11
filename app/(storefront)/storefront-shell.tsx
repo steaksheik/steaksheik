@@ -57,7 +57,7 @@ export function StorefrontShell({
     const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [iosInstallOpen, setIosInstallOpen] = useState(false);
-  const name = (brand?.name ?? 'The Steak Sheikh').toUpperCase();
+  const name = (brand?.name ?? "Sonny's Sweet & Savory").toUpperCase();
   const accent = brand?.theme?.accentColor ?? DEFAULT_ACCENT;
   const primary = brand?.theme?.primaryColor ?? DEFAULT_PRIMARY;
   const pwaInstall = usePwaInstall();
@@ -101,7 +101,7 @@ export function StorefrontShell({
       {brand?.logoUrl ? (
         <img
           src={brand.logoUrl}
-          alt={brand.name ?? 'The Steak Sheikh'}
+          alt={brand.name ?? "Sonny's Sweet & Savory"}
           className="h-20 sm:h-24 w-auto max-w-[260px] object-contain"
         />
       ) : (
@@ -327,7 +327,7 @@ export function StorefrontShell({
           </div>
 
           <div className="mt-12 pt-6 border-t border-white/10 text-center text-xs text-white/30">
-            &copy; {new Date().getFullYear()} {brand?.name ?? 'The Steak Sheikh'}. All rights reserved.
+            &copy; {new Date().getFullYear()} {brand?.name ?? "Sonny's Sweet & Savory"}. All rights reserved.
           </div>
                </div>
       </footer>

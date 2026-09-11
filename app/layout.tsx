@@ -5,6 +5,7 @@ import { Toaster } from '@/components/ui/sonner'
 import { ChunkLoadErrorHandler } from '@/components/chunk-load-error-handler'
 import { PwaRegister } from '@/components/pwa-register'
 import type { Metadata, Viewport } from 'next'
+import { getDefaultTenant, getBrand } from '@/lib/storefront'
 
 export const dynamic = 'force-dynamic'
 
@@ -15,29 +16,50 @@ const jetbrainsMono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mon
 
 const siteUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
-export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
-  title: 'The Steak Sheikh',
-  description: 'Premium halal steaks, signature burgers and sides — crafted with passion and delivered to your door.',
-  alternates: { canonical: siteUrl },
-  icons: {
-    icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
-    ],
-    shortcut: '/favicon.svg',
-    apple: '/icons/apple-touch-icon.png',
-  },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: 'Steak Sheikh',
-  },
-  openGraph: {
-    title: 'The Steak Sheikh',
-    description: 'Premium halal steaks, signature burgers and sides — crafted with passion and delivered to your door.',
-    images: ['/og-image.png'],
-  },
+// Fallback identity, used only if no brand has been saved yet.
+const DEFAULT_NAME = "Sonny's Sweet & Savory"
+const DEFAULT_DESCRIPTION = 'Premium halal steaks, signature burgers and sides — crafted with passion and delivered to your door.'
+
+/**
+ * Dynamic so the browser tab title, PWA name, and OpenGraph card always
+ * reflect whatever's actually saved in Admin -> Branding, instead of a
+ * hardcoded brand name baked in at deploy time. Page-level generateMetadata
+ * (menu, product, wagyu-journey) sets only its own short title segment and
+ * relies on the `%s | <name>` template below to append the brand name.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getDefaultTenant().catch(() => null)
+  const brand = tenant ? await getBrand(tenant.id) : null
+  const name = brand?.name || DEFAULT_NAME
+  const description = brand?.description || DEFAULT_DESCRIPTION
+  const faviconUrl = brand?.faviconUrl || undefined
+
+  return {
+    metadataBase: new URL(siteUrl),
+    title: { default: name, template: `%s | ${name}` },
+    description,
+    alternates: { canonical: siteUrl },
+    icons: {
+      icon: faviconUrl
+        ? [{ url: faviconUrl }]
+        : [
+            { url: '/favicon.svg', type: 'image/svg+xml' },
+            { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+          ],
+      shortcut: faviconUrl || '/favicon.svg',
+      apple: '/icons/apple-touch-icon.png',
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'black-translucent',
+      title: name,
+    },
+    openGraph: {
+      title: name,
+      description,
+      images: ['/og-image.png'],
+    },
+  }
 }
 
 export const viewport: Viewport = {

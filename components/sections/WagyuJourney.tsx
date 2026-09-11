@@ -155,7 +155,7 @@ function MediaFallback() {
       }}
     >
       <span className="font-heading text-sm uppercase tracking-[0.3em] text-white/30">
-        The Steak Sheikh
+        Sonny&apos;s Sweet &amp; Savory
       </span>
     </div>
   );

@@ -15,16 +15,18 @@ export async function generateMetadata({
   params: { slug: string };
 }): Promise<Metadata> {
   const tenant = await getDefaultTenant();
-  const product = await getProductBySlug(tenant.id, params.slug);
+  const [brand, product] = await Promise.all([getBrand(tenant.id), getProductBySlug(tenant.id, params.slug)]);
   if (!product) return {};
 
   const siteUrl = getSiteUrl();
+  const name = brand?.name || "Sonny's Sweet & Savory";
   const description =
-    product.shortDescription || product.description || `Order ${product.name} online from The Steak Sheikh — delivery or collection.`;
+    product.shortDescription || product.description || `Order ${product.name} online from ${name} — delivery or collection.`;
   const image = product.images[0]?.url;
 
   return {
-    title: `${product.name} | The Steak Sheikh`,
+    // Root layout's title template appends "| <name>" automatically.
+    title: product.name,
     description,
     alternates: { canonical: `${siteUrl}/product/${product.slug}` },
     openGraph: {

@@ -14,15 +14,17 @@ export async function generateMetadata({
   searchParams: { category?: string };
 }): Promise<Metadata> {
   const tenant = await getDefaultTenant();
-  const categories = await getCategories(tenant.id);
+  const [brand, categories] = await Promise.all([getBrand(tenant.id), getCategories(tenant.id)]);
   const active = categories.find((c) => c.slug === searchParams.category);
   const siteUrl = getSiteUrl();
+  const name = brand?.name || "Sonny's Sweet & Savory";
 
   return {
-    title: active ? `${active.name} | The Steak Sheikh Menu` : 'Menu | The Steak Sheikh',
+    // Root layout's title template appends "| <name>" automatically.
+    title: active ? `${active.name} Menu` : 'Menu',
     description: active
-      ? `Order ${active.name} online from The Steak Sheikh — halal steaks, burgers and sides for delivery or collection.`
-      : 'Browse the full Steak Sheikh menu — halal steaks, signature burgers and sides. Order online for delivery or collection.',
+      ? `Order ${active.name} online from ${name} — halal steaks, burgers and sides for delivery or collection.`
+      : `Browse the full ${name} menu — halal steaks, signature burgers and sides. Order online for delivery or collection.`,
     // Category filtering happens client-side off the same URL family — point
     // every variant at the canonical /menu so Google consolidates them
     // instead of treating each ?category= as a separate near-duplicate page.

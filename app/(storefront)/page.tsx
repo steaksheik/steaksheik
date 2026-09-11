@@ -19,7 +19,7 @@ export default async function HomePage() {
     ? await getFeaturedProducts(tenant.id, featuredSection.limit)
     : [];
 
-  const brandName = brand?.name ?? 'The Steak Sheikh';
+  const brandName = brand?.name ?? "Sonny's Sweet & Savory";
 
   const featured: StoreProduct[] = featuredProducts.map((p) => ({
     id: p.id,

@@ -1,11 +1,19 @@
 
 import type { MetadataRoute } from 'next';
+import { getDefaultTenant, getBrand } from '@/lib/storefront';
 
-export default function manifest(): MetadataRoute.Manifest {
+const DEFAULT_NAME = "Sonny's Sweet & Savory";
+const DEFAULT_DESCRIPTION = 'Premium halal steaks, signature burgers and sides — order ahead for delivery or collection.';
+
+export default async function manifest(): Promise<MetadataRoute.Manifest> {
+  const tenant = await getDefaultTenant().catch(() => null);
+  const brand = tenant ? await getBrand(tenant.id) : null;
+  const name = brand?.name || DEFAULT_NAME;
+
   return {
-    name: 'The Steak Sheikh',
-    short_name: 'Steak Sheikh',
-    description: 'Premium halal steaks, signature burgers and sides — order ahead for delivery or collection.',
+    name,
+    short_name: name,
+    description: brand?.description || DEFAULT_DESCRIPTION,
     start_url: '/',
     scope: '/',
     display: 'standalone',
