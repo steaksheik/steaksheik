@@ -7,6 +7,7 @@ import { placeOrder } from '@/lib/ordering/order-service';
 import { validateDeliveryPostcode } from '@/lib/ordering/delivery-validation';
 import { getStripeClient } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 
 export const dynamic = 'force-dynamic';
@@ -114,32 +115,47 @@ export const POST = withRoute(async (req: NextRequest) => {
   // Line items keep real product prices (so receipts read correctly) — a
   // one-time Stripe coupon applies the discount to the session total instead.
   const orderDiscount = Number(order.discount);
-  let stripeDiscounts: { coupon: string }[] | undefined;
-  if (orderDiscount > 0) {
-    const stripeCoupon = await stripe.coupons.create({
-      amount_off: Math.round(orderDiscount * 100),
-      currency: 'gbp',
-      duration: 'once',
-      name: order.couponCode ?? 'Discount',
-    });
-    stripeDiscounts = [{ coupon: stripeCoupon.id }];
-  }
+  let session;
+  try {
+    let stripeDiscounts: { coupon: string }[] | undefined;
+    if (orderDiscount > 0) {
+      const stripeCoupon = await stripe.coupons.create({
+        amount_off: Math.round(orderDiscount * 100),
+        currency: 'gbp',
+        duration: 'once',
+        name: order.couponCode ?? 'Discount',
+      });
+      stripeDiscounts = [{ coupon: stripeCoupon.id }];
+    }
 
-  const session = await stripe.checkout.sessions.create({
-    mode: 'payment',
-    payment_method_types: ['card'],
-    customer_email: email,
-    line_items: lineItems,
-    discounts: stripeDiscounts,
-    metadata: {
+    session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      // Deliberately no payment_method_types — accounts with Stripe's Managed
+      // Payments enabled (the default on newer accounts) reject that param
+      // outright and choose methods themselves.
+      customer_email: email,
+      line_items: lineItems,
+      discounts: stripeDiscounts,
+      metadata: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        tenantId,
+        cartToken: body.cartToken,
+      },
+      success_url: `${origin}/order-confirmation?orderNumber=${order.orderNumber}`,
+      cancel_url: `${origin}/checkout?cancelled=true`,
+    });
+  } catch (err) {
+    // Surface Stripe's own message (safe -- describes API/account
+    // configuration issues, never secrets) instead of the generic
+    // "unexpected error", so a misconfiguration is diagnosable from the
+    // toast alone rather than needing a server log lookup every time.
+    logger.error('[checkout] Stripe session creation failed', {
       orderId: order.id,
-      orderNumber: order.orderNumber,
-      tenantId,
-      cartToken: body.cartToken,
-    },
-    success_url: `${origin}/order-confirmation?orderNumber=${order.orderNumber}`,
-    cancel_url: `${origin}/checkout?cancelled=true`,
-  });
+      error: (err as Error).message,
+    });
+    return fail('PAYMENT_ERROR', `Payment setup failed: ${(err as Error).message}`, { status: 502 });
+  }
 
   // Record payment
   await prisma.payment.create({
