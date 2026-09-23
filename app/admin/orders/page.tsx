@@ -118,7 +118,13 @@ export default function OrdersPage() {
       });
       const json = await res.json();
       if (json.success) {
-        toast.success(`Order updated to ${status}`);
+        if (json.data?.refundedAmount) {
+          toast.success(`Order cancelled and ${fmt(json.data.refundedAmount)} refunded`);
+        } else if (json.data?.refundWarning) {
+          toast.warning(`Order updated to ${status}, but: ${json.data.refundWarning}`);
+        } else {
+          toast.success(`Order updated to ${status}`);
+        }
         loadOrders();
       } else {
         toast.error(json.error?.message || 'Update failed');
@@ -132,6 +138,15 @@ export default function OrdersPage() {
   const nextStatus = (current: string) => {
     const idx = STATUS_FLOW.indexOf(current);
     return idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null;
+  };
+
+  const cancelOrder = (order: Order) => {
+    const isPaid = order.payments.some(p => p.status === 'SUCCEEDED');
+    const message = isPaid
+      ? `Cancel order ${order.orderNumber}? This will also automatically refund ${fmt(order.total)} to the customer.`
+      : `Cancel order ${order.orderNumber}?`;
+    if (!confirm(message)) return;
+    updateStatus(order.id, 'CANCELLED');
   };
 
   const refundOrder = async (order: Order) => {
@@ -274,7 +289,7 @@ export default function OrdersPage() {
                         {canWrite && order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
                           <button
                             disabled={updating === order.id}
-                            onClick={() => updateStatus(order.id, 'CANCELLED')}
+                            onClick={() => cancelOrder(order)}
                             className="rounded-md border border-red-500/30 px-4 py-2 text-sm font-medium text-red-400 hover:bg-red-500/10 disabled:opacity-50"
                           >
                             Cancel Order
