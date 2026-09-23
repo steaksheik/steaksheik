@@ -5,7 +5,7 @@ import { publicTenant } from '@/lib/auth/context';
 import { getCartSummary } from '@/lib/ordering/cart-service';
 import { placeOrder } from '@/lib/ordering/order-service';
 import { validateDeliveryPostcode } from '@/lib/ordering/delivery-validation';
-import { stripe } from '@/lib/stripe';
+import { getStripeClient } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { z } from 'zod';
 
@@ -54,6 +54,16 @@ export const POST = withRoute(async (req: NextRequest) => {
   // Must have email (guest or customer)
   const email = body.guestEmail || (body.customerId ? (await prisma.customer.findUnique({ where: { id: body.customerId } }))?.email : null);
   if (!email) return fail('MISSING_EMAIL', 'Email is required', { status: 400 });
+
+  // Resolve Stripe before placing the order — failing here (misconfigured
+  // Payments in Admin -> Platform Services) must not leave behind an orphaned
+  // PENDING order with no way to ever be paid.
+  let stripe;
+  try {
+    stripe = await getStripeClient(tenantId);
+  } catch {
+    return fail('PAYMENT_NOT_CONFIGURED', 'Online payment is not available right now. Please try again shortly or contact us.', { status: 503 });
+  }
 
   // Place order
   const order = await placeOrder({

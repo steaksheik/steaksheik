@@ -6,7 +6,7 @@ import { ok, fail } from '@/lib/api/response';
 import { requirePermission } from '@/lib/auth/context';
 import { getOrderById } from '@/lib/ordering/order-service';
 import { prisma } from '@/lib/db';
-import { stripe } from '@/lib/stripe';
+import { getStripeClient } from '@/lib/stripe';
 import { auditLog } from '@/lib/audit/service';
 import { sendOrderRefundedEmail } from '@/lib/notifications/email-service';
 
@@ -47,6 +47,7 @@ export const POST = withRoute(async (req: NextRequest, { params }) => {
 
   let refund;
   try {
+    const stripe = await getStripeClient(ctx.tenantId);
     refund = await stripe.refunds.create({
       payment_intent: payment.stripePaymentIntent,
       amount: Math.round(refundAmount * 100),

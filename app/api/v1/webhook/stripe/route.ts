@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe';
+import Stripe from 'stripe';
+import { getStripeWebhookSecret } from '@/lib/stripe';
 import { prisma } from '@/lib/db';
 import { logger } from '@/lib/logger';
 import { awardOrderPoints } from '@/lib/ordering/loyalty-service';
@@ -8,11 +9,17 @@ import { sendNewOrderAdminAlert, sendOrderStatusUpdate } from '@/lib/notificatio
 
 export const dynamic = 'force-dynamic';
 
+// Signature verification is pure crypto against the webhook secret — it
+// doesn't call Stripe's API, so it never needs a real secret key. The actual
+// key (Admin -> Platform Services -> Payments) is resolved per-tenant where
+// it's actually needed, e.g. checkout/route.ts and the refund route.
+const verificationClient = new Stripe('sk_not_used_for_webhook_verification', { typescript: true });
+
 // Stripe webhooks must receive raw body
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get('stripe-signature');
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const webhookSecret = await getStripeWebhookSecret();
 
   if (!sig || !webhookSecret) {
     logger.warn('[stripe-webhook] Missing signature or webhook secret');
@@ -21,7 +28,7 @@ export async function POST(req: NextRequest) {
 
   let event;
   try {
-    event = stripe.webhooks.constructEvent(body, sig, webhookSecret);
+    event = verificationClient.webhooks.constructEvent(body, sig, webhookSecret);
   } catch (err) {
     logger.error('[stripe-webhook] Signature verification failed', { error: (err as Error).message });
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
