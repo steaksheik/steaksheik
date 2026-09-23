@@ -130,9 +130,14 @@ export const POST = withRoute(async (req: NextRequest) => {
 
     session = await stripe.checkout.sessions.create({
       mode: 'payment',
-      // Deliberately no payment_method_types — accounts with Stripe's Managed
-      // Payments enabled (the default on newer accounts) reject that param
-      // outright and choose methods themselves.
+      // Managed Payments (the default on newer Stripe accounts) both rejects
+      // an explicit payment_method_types and requires every line item to
+      // carry a Stripe tax code, since it takes over automatic tax
+      // calculation too. This app already computes its own final prices,
+      // delivery fee and discount server-side — there's no Stripe Tax setup
+      // to feed it — so disable Managed Payments for this session and keep
+      // the classic, self-computed-price checkout this code was built for.
+      managed_payments: { enabled: false },
       customer_email: email,
       line_items: lineItems,
       discounts: stripeDiscounts,
