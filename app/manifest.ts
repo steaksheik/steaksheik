@@ -3,7 +3,7 @@ import type { MetadataRoute } from 'next';
 import { getDefaultTenant, getBrand } from '@/lib/storefront';
 
 const DEFAULT_NAME = "Sonny's Sweet & Savory";
-const DEFAULT_DESCRIPTION = 'Premium halal steaks, signature burgers and sides — order ahead for delivery or collection.';
+const DEFAULT_DESCRIPTION = 'Premium steaks, signature burgers and sides — order ahead for delivery or collection.';
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const tenant = await getDefaultTenant().catch(() => null);

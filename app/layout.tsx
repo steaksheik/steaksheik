@@ -18,7 +18,7 @@ const siteUrl = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
 // Fallback identity, used only if no brand has been saved yet.
 const DEFAULT_NAME = "Sonny's Sweet & Savory"
-const DEFAULT_DESCRIPTION = 'Premium halal steaks, signature burgers and sides — crafted with passion and delivered to your door.'
+const DEFAULT_DESCRIPTION = 'Premium steaks, signature burgers and sides — crafted with passion and delivered to your door.'
 
 /**
  * Dynamic so the browser tab title, PWA name, and OpenGraph card always

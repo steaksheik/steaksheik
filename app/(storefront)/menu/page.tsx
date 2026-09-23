@@ -23,8 +23,8 @@ export async function generateMetadata({
     // Root layout's title template appends "| <name>" automatically.
     title: active ? `${active.name} Menu` : 'Menu',
     description: active
-      ? `Order ${active.name} online from ${name} — halal steaks, burgers and sides for delivery or collection.`
-      : `Browse the full ${name} menu — halal steaks, signature burgers and sides. Order online for delivery or collection.`,
+      ? `Order ${active.name} online from ${name} — steaks, burgers and sides for delivery or collection.`
+      : `Browse the full ${name} menu — steaks, signature burgers and sides. Order online for delivery or collection.`,
     // Category filtering happens client-side off the same URL family — point
     // every variant at the canonical /menu so Google consolidates them
     // instead of treating each ?category= as a separate near-duplicate page.
