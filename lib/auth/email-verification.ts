@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { randomToken } from '@/lib/security/crypto';
 import { getSiteUrl } from '@/lib/seo';
 import { sendCustomerVerificationEmail } from '@/lib/notifications/email-service';
@@ -21,6 +22,20 @@ export function issueEmailVerification(params: { email: string; firstName?: stri
     email: params.email,
     firstName: params.firstName ?? 'there',
     verifyUrl: `${getSiteUrl()}/account/verify-email?token=${emailVerifyToken}`,
-  }).catch(() => {});
+  })
+    .then((sent) => {
+      // Still fire-and-forget, but never silent: a swallowed failure here looks
+      // identical to success at the API ("Verification email sent") while the
+      // customer sits waiting for mail that was never delivered.
+      if (!sent) {
+        logger.error('[verify-email] verification email was not sent', { email: params.email });
+      }
+    })
+    .catch((err) => {
+      logger.error('[verify-email] verification email threw', {
+        email: params.email,
+        error: (err as Error).message,
+      });
+    });
   return { emailVerifyToken, emailVerifyTokenExpiresAt };
 }

@@ -79,13 +79,28 @@ async function getBrandInfo(): Promise<{ name: string; logoUrl: string | null }>
   }
 }
 
+/**
+ * The From: address for the Abacus fallback path (a configured SES/SMTP/Resend
+ * provider brings its own verified sender and never reaches here).
+ *
+ * EMAIL_FROM pins it explicitly. Otherwise it's derived from NEXTAUTH_URL with
+ * any "www." stripped, because the sending domain needs SPF/DKIM and those are
+ * published on the registrable domain, not the www subdomain. Deriving this
+ * from NEXTAUTH_URL at all is a trap worth knowing about: repointing that
+ * variable silently changes who your mail is From, which can take deliverability
+ * down with it.
+ */
 async function getSenderInfo() {
+  const { name } = await getBrandInfo();
+
+  const explicit = process.env.EMAIL_FROM?.trim();
+  if (explicit) return { senderEmail: explicit, senderAlias: name };
+
   const appUrl = process.env.NEXTAUTH_URL || '';
   let hostname = 'darkkitchen.abacusai.app';
   try { hostname = new URL(appUrl).hostname; } catch {}
-  const { name } = await getBrandInfo();
   return {
-    senderEmail: `noreply@${hostname}`,
+    senderEmail: `noreply@${hostname.replace(/^www\./, '')}`,
     senderAlias: name,
   };
 }
