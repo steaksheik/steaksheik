@@ -292,7 +292,7 @@ export function StorefrontShell({
               <ul className="space-y-2.5">
                 <li><Link href="/#delivery" className="text-sm text-white/50 hover:text-white transition-colors">Delivery Info</Link></li>
                 <li><Link href="/#delivery" className="text-sm text-white/50 hover:text-white transition-colors">Collection</Link></li>
-                <li><a href="mailto:steaksheikh4@gmail.com" className="text-sm text-white/50 hover:text-white transition-colors">Contact Us</a></li>
+                <li><Link href="/contact" className="text-sm text-white/50 hover:text-white transition-colors">Contact Us</Link></li>
               </ul>
             </div>
 

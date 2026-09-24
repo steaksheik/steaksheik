@@ -446,6 +446,53 @@ export async function sendCustomerPasswordResetEmail(params: { email: string; fi
   });
 }
 
+// ── Contact form submission -> Admin ──────────────────────
+/**
+ * Goes to the address configured in Admin -> Store Location (ContactInfo),
+ * falling back to ADMIN_EMAIL. replyTo is the sender, so hitting reply in
+ * the inbox answers the customer directly.
+ */
+export async function sendContactMessageAlert(msg: {
+  name: string;
+  email: string;
+  phone?: string | null;
+  subject?: string | null;
+  message: string;
+}) {
+  const { name } = await getBrandInfo();
+
+  let recipient = ADMIN_EMAIL;
+  try {
+    const { prisma } = await import('@/lib/db');
+    const info = await prisma.contactInfo.findFirst({ select: { email: true } });
+    if (info?.email) recipient = info.email;
+  } catch {
+    /* fall back to ADMIN_EMAIL */
+  }
+
+  const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;' }[c] ?? c));
+
+  const content = `
+    <h2 style="color: #0a0a0a; margin: 0 0 16px;">New Enquiry from ${name}'s Contact Form</h2>
+    <div style="background: #f8f6f1; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+      <p style="margin: 4px 0;"><strong>From:</strong> ${esc(msg.name)}</p>
+      <p style="margin: 4px 0;"><strong>Email:</strong> ${esc(msg.email)}</p>
+      ${msg.phone ? `<p style="margin: 4px 0;"><strong>Phone:</strong> ${esc(msg.phone)}</p>` : ''}
+      ${msg.subject ? `<p style="margin: 4px 0;"><strong>Subject:</strong> ${esc(msg.subject)}</p>` : ''}
+    </div>
+    <p style="white-space: pre-wrap; margin: 0 0 20px; line-height: 1.6;">${esc(msg.message)}</p>
+    <p style="color: #666; font-size: 13px;">Reply to this email to respond to ${esc(msg.name)} directly.</p>
+  `;
+
+  return sendNotificationEmail({
+    notificationId: process.env.NOTIF_ID_CONTACT_MESSAGE || '',
+    subject: `New enquiry from ${msg.name}${msg.subject ? ` — ${msg.subject}` : ''}`,
+    body: await emailWrapper(content),
+    recipientEmail: recipient,
+    replyTo: msg.email,
+  });
+}
+
 // ── Daily Summary -> Admin ────────────────────────────────
 export async function sendDailySummary(stats: {
   ordersToday: number;

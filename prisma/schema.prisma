@@ -52,6 +52,7 @@ model Tenant {
   loyaltyAccounts      LoyaltyAccount[]
   mediaAssets          MediaAsset[]
   discounts            Discount[]
+  contactMessages      ContactMessage[]
 
   @@map("tenants")
 }
@@ -594,6 +595,41 @@ model SeoSettings {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("seo_settings")
+}
+
+/**
+ * A submission from the public /contact form. Kept as its own table rather
+ * than folded into Customer: an enquiry isn't a customer record, and saving
+ * it must never create marketing contacts or imply consent.
+ */
+model ContactMessage {
+  id        String               @id @default(uuid())
+  tenantId  String
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  message   String
+  status    ContactMessageStatus @default(NEW)
+  // Captured for abuse investigation — the form is public.
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, createdAt])
+  @@map("contact_messages")
+}
+
+enum ContactMessageStatus {
+  NEW
+  READ
+  REPLIED
+  ARCHIVED
 }
 
 model ContactInfo {
