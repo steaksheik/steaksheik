@@ -7,7 +7,7 @@ import { useCustomer } from '@/lib/customer-context';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAccentColor } from '../../theme-context';
-import { TurnstileWidget, type TurnstileHandle } from '../../turnstile-widget';
+import { TurnstileWidget, turnstileConfigured, type TurnstileHandle } from '../../turnstile-widget';
 
 export default function CustomerLoginPage() {
   const ACCENT = useAccentColor();
@@ -182,11 +182,17 @@ export default function CustomerLoginPage() {
           </div>
         )}
         {mode === 'register' && (
-          <TurnstileWidget ref={turnstileRef} action="signup" onToken={setTurnstileToken} />
+          <>
+            <TurnstileWidget ref={turnstileRef} action="signup" onToken={setTurnstileToken} />
+            {turnstileConfigured && !turnstileToken && (
+              <p className="text-xs text-neutral-500">Verifying you&apos;re human…</p>
+            )}
+          </>
         )}
         <button
           type="submit"
-          disabled={loading}
+          // Sign-in isn't Turnstile-protected, so only the register mode waits.
+          disabled={loading || (mode === 'register' && turnstileConfigured && !turnstileToken)}
           className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.01]"
           style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
         >

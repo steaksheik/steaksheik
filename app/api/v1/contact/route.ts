@@ -35,7 +35,13 @@ export const POST = withRoute(async (req: NextRequest) => {
     host: req.headers.get('host'),
   });
   if (!bot.ok) {
-    return fail('BOT_CHECK_FAILED', 'Could not verify you are human — please refresh and try again', { status: 403 });
+    // The reason is echoed back because it describes the caller's own request
+    // and turns "it just says I'm a bot" into a one-request diagnosis —
+    // missing token vs. wrong hostname vs. Cloudflare rejecting the token.
+    return fail('BOT_CHECK_FAILED', 'Could not verify you are human — please refresh and try again', {
+      status: 403,
+      details: [bot.reason],
+    });
   }
 
   const created = await prisma.contactMessage.create({

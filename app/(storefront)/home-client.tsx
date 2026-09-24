@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import type { HeroConfig, PromoCard } from '@/lib/storefront';
 import { useCustomer } from '@/lib/customer-context';
 import { useBrandTheme } from './theme-context';
-import { TurnstileWidget, type TurnstileHandle } from './turnstile-widget';
+import { TurnstileWidget, turnstileConfigured, type TurnstileHandle } from './turnstile-widget';
 import {
   Flame,
   Truck,
@@ -554,7 +554,7 @@ export function HomeClient({
               />
               <button
                 type="submit"
-                disabled={nlSubmitting}
+                disabled={nlSubmitting || (turnstileConfigured && !nlToken)}
                 className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02] disabled:opacity-60"
                 style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
               >
@@ -562,6 +562,9 @@ export function HomeClient({
               </button>
             </div>
             <TurnstileWidget ref={turnstileRef} action="newsletter" theme="light" onToken={setNlToken} />
+            {turnstileConfigured && !nlToken && (
+              <p className="text-xs text-neutral-500">Verifying you&apos;re human…</p>
+            )}
           </form>
         </div>
       </section>

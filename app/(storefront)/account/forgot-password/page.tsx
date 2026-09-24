@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { useAccentColor } from '../../theme-context';
-import { TurnstileWidget, type TurnstileHandle } from '../../turnstile-widget';
+import { TurnstileWidget, turnstileConfigured, type TurnstileHandle } from '../../turnstile-widget';
 
 export default function ForgotPasswordPage() {
   const ACCENT = useAccentColor();
@@ -69,9 +69,12 @@ export default function ForgotPasswordPage() {
             />
           </div>
           <TurnstileWidget ref={turnstileRef} action="password-reset" onToken={setTurnstileToken} />
+          {turnstileConfigured && !turnstileToken && (
+            <p className="text-xs text-neutral-500">Verifying you&apos;re human…</p>
+          )}
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || (turnstileConfigured && !turnstileToken)}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.01]"
             style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
           >

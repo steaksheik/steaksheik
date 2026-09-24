@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { useAccentColor } from '../theme-context';
-import { TurnstileWidget, type TurnstileHandle } from '../turnstile-widget';
+import { TurnstileWidget, turnstileConfigured, type TurnstileHandle } from '../turnstile-widget';
 
 export function ContactForm() {
   const ACCENT = useAccentColor();
@@ -16,7 +16,12 @@ export function ContactForm() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileFailed, setTurnstileFailed] = useState(false);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
+
+  // Only wait on a token when this build actually renders a widget — otherwise
+  // the button would never enable on an unconfigured deployment.
+  const awaitingToken = turnstileConfigured && !turnstileToken;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,11 +102,27 @@ export function ContactForm() {
         />
       </div>
 
-      <TurnstileWidget ref={turnstileRef} action="contact" onToken={setTurnstileToken} />
+      <TurnstileWidget
+        ref={turnstileRef}
+        action="contact"
+        onToken={(t) => {
+          setTurnstileToken(t);
+          if (t) setTurnstileFailed(false);
+        }}
+        onError={() => setTurnstileFailed(true)}
+      />
+
+      {turnstileFailed ? (
+        <p className="text-xs text-red-400">
+          The human-verification check couldn&apos;t load. Please refresh the page and try again.
+        </p>
+      ) : awaitingToken ? (
+        <p className="text-xs text-white/40">Verifying you&apos;re human…</p>
+      ) : null}
 
       <button
         type="submit"
-        disabled={sending}
+        disabled={sending || awaitingToken}
         className="inline-flex items-center justify-center gap-2 rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02] disabled:opacity-60"
         style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
       >

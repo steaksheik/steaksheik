@@ -20,6 +20,14 @@ const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render
 
 const SITEKEY = process.env.NEXT_PUBLIC_TURNSTILE_SITEKEY;
 
+/**
+ * Whether this build ships a sitekey — i.e. whether a form should wait for a
+ * token before letting the visitor submit. Forms must gate their submit button
+ * on this rather than on the token alone, or an unconfigured deployment (where
+ * the widget renders nothing and no token ever arrives) would be unsubmittable.
+ */
+export const turnstileConfigured = Boolean(SITEKEY);
+
 interface TurnstileApi {
   render: (
     el: HTMLElement,
@@ -81,16 +89,25 @@ export const TurnstileWidget = forwardRef<
     action: string;
     /** Receives the token, or null when it expires / errors. */
     onToken: (token: string | null) => void;
+    /**
+     * Fired when the challenge cannot complete — most often because the site's
+     * hostname isn't on the widget's domain list in the Cloudflare dashboard.
+     * Lets a form say "verification failed to load" instead of sitting on a
+     * disabled submit button with no explanation.
+     */
+    onError?: (code: 'error' | 'expired') => void;
     /** Match the surrounding section — the storefront is dark, the newsletter band is light. */
     theme?: 'auto' | 'light' | 'dark';
     className?: string;
   }
->(function TurnstileWidget({ action, onToken, theme = 'dark', className }, ref) {
+>(function TurnstileWidget({ action, onToken, onError, theme = 'dark', className }, ref) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
-  // Keep the latest callback without re-rendering the widget when it changes.
+  // Keep the latest callbacks without re-rendering the widget when they change.
   const onTokenRef = useRef(onToken);
   onTokenRef.current = onToken;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   useImperativeHandle(ref, () => ({
     reset: () => {
@@ -113,8 +130,14 @@ export const TurnstileWidget = forwardRef<
         action,
         theme,
         callback: (token: string) => onTokenRef.current(token),
-        'expired-callback': () => onTokenRef.current(null),
-        'error-callback': () => onTokenRef.current(null),
+        'expired-callback': () => {
+          onTokenRef.current(null);
+          onErrorRef.current?.('expired');
+        },
+        'error-callback': () => {
+          onTokenRef.current(null);
+          onErrorRef.current?.('error');
+        },
       });
     });
 
