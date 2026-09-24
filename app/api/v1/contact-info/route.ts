@@ -23,6 +23,13 @@ export const GET = withRoute(async (req: NextRequest) => {
   return ok({ contactInfo });
 });
 
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const dayHoursSchema = z.object({
+  open: z.string().regex(TIME_RE, 'Use 24-hour HH:MM'),
+  close: z.string().regex(TIME_RE, 'Use 24-hour HH:MM'),
+  closed: z.boolean().optional(),
+});
+
 const updateSchema = z.object({
   email: z.string().email().optional().nullable(),
   phone: z.string().max(30).optional().nullable(),
@@ -30,6 +37,14 @@ const updateSchema = z.object({
   city: z.string().max(120).optional().nullable(),
   postcode: z.string().max(20).optional().nullable(),
   country: z.string().length(2).optional(),
+  businessHours: z
+    .object({
+      mon: dayHoursSchema, tue: dayHoursSchema, wed: dayHoursSchema, thu: dayHoursSchema,
+      fri: dayHoursSchema, sat: dayHoursSchema, sun: dayHoursSchema,
+    })
+    .partial()
+    .optional()
+    .nullable(),
 });
 
 /**
@@ -68,7 +83,7 @@ export const PUT = withRoute(async (req: NextRequest) => {
 
   const contactInfo = await prisma.contactInfo.upsert({
     where: { tenantId: ctx.tenantId },
-    update: { ...body, latitude, longitude, updatedAt: new Date() },
+    update: { ...body, businessHours: (body.businessHours ?? undefined) as never, latitude, longitude, updatedAt: new Date() },
     create: {
       tenantId: ctx.tenantId,
       email: body.email ?? null,
@@ -77,6 +92,7 @@ export const PUT = withRoute(async (req: NextRequest) => {
       city: body.city ?? null,
       postcode: body.postcode ?? null,
       country: body.country ?? 'GB',
+      businessHours: (body.businessHours ?? undefined) as never,
       latitude,
       longitude,
     },

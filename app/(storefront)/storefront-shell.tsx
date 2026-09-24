@@ -19,6 +19,9 @@ import {
   Facebook,
   Instagram,
   Music2,
+  Youtube,
+  Twitter,
+  Linkedin,
   Apple,
   Play,
   Share,
@@ -43,15 +46,41 @@ interface NavCategory {
   slug: string;
 }
 
+interface StoreContact {
+  email: string | null;
+  phone: string | null;
+  /** Pre-formatted rows, e.g. [{ label: 'Mon – Sun', value: '16:00 – 23:00' }] */
+  hours: { label: string; value: string }[];
+}
+
+interface SocialLinkItem {
+  platform: string;
+  url: string;
+}
+
+/** Only platforms we have an icon for are rendered in the footer. */
+const SOCIAL_ICONS: Record<string, typeof Facebook> = {
+  FACEBOOK: Facebook,
+  INSTAGRAM: Instagram,
+  TIKTOK: Music2,
+  YOUTUBE: Youtube,
+  TWITTER: Twitter,
+  LINKEDIN: Linkedin,
+};
+
 export function StorefrontShell({
   brand,
   categories,
   rewardsEnabled = true,
+  contact,
+  socialLinks = [],
   children,
 }: {
   brand: BrandInfo | null;
   categories: NavCategory[];
   rewardsEnabled?: boolean;
+  contact?: StoreContact;
+  socialLinks?: SocialLinkItem[];
   children: React.ReactNode;
 }) {
     const [mobileOpen, setMobileOpen] = useState(false);
@@ -246,17 +275,28 @@ export function StorefrontShell({
             {/* Brand */}
             <div className="md:col-span-1">
               {Logo}
-              <div className="mt-5 flex items-center gap-2">
-                <button onClick={() => soon('Facebook')} aria-label="Facebook" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
-                  <Facebook className="h-4 w-4" />
-                </button>
-                <button onClick={() => soon('Instagram')} aria-label="Instagram" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
-                  <Instagram className="h-4 w-4" />
-                </button>
-                <button onClick={() => soon('TikTok')} aria-label="TikTok" className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-colors">
-                  <Music2 className="h-4 w-4" />
-                </button>
-              </div>
+              {/* Only profiles actually set in Admin -> Store Location appear. */}
+              {socialLinks.length > 0 && (
+                <div className="mt-5 flex items-center gap-2">
+                  {socialLinks.map((s) => {
+                    const Icon = SOCIAL_ICONS[s.platform];
+                    if (!Icon) return null;
+                    const label = s.platform.charAt(0) + s.platform.slice(1).toLowerCase();
+                    return (
+                      <a
+                        key={s.platform}
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={label}
+                        className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+                      >
+                        <Icon className="h-4 w-4" />
+                      </a>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Menu */}
@@ -300,9 +340,17 @@ export function StorefrontShell({
             <div>
               <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-4">Contact</h4>
               <ul className="space-y-2.5 text-sm text-white/50">
-                <li><a href="mailto:sonnyss141@gmail.com" className="hover:text-white transition-colors">sonnyss141@gmail.com</a></li>
-                <li><a href="tel:+441234567890" className="hover:text-white transition-colors">0123 456 7890</a></li>
-                <li>9:00 &ndash; 23:00 Daily</li>
+                {contact?.email && (
+                  <li><a href={`mailto:${contact.email}`} className="hover:text-white transition-colors">{contact.email}</a></li>
+                )}
+                {contact?.phone && (
+                  <li><a href={`tel:${contact.phone.replace(/\s+/g, '')}`} className="hover:text-white transition-colors">{contact.phone}</a></li>
+                )}
+                {contact?.hours?.map((h) => (
+                  <li key={h.label}>
+                    <span className="text-white/40">{h.label}</span> {h.value}
+                  </li>
+                ))}
               </ul>
                            <div className="mt-4 flex flex-col gap-2">
                 {pwaInstall.installed ? (

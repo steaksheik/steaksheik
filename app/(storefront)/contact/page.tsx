@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getDefaultTenant, getBrand, getContactInfo } from '@/lib/storefront';
+import { getDefaultTenant, getBrand, getContactInfo, formatBusinessHours } from '@/lib/storefront';
 import { getSiteUrl } from '@/lib/seo';
 import { Mail, Phone, MapPin, Clock } from 'lucide-react';
 import { DEFAULT_BACKGROUND } from '../theme-context';
@@ -29,6 +29,7 @@ export default async function ContactPage() {
   const background = brand?.theme?.backgroundColor ?? DEFAULT_BACKGROUND;
 
   const addressLines = [contact?.address, contact?.city, contact?.postcode].filter(Boolean).join(', ');
+  const hours = formatBusinessHours(contact?.businessHours);
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: background }}>
@@ -93,7 +94,11 @@ export default async function ContactPage() {
                 <Clock className="h-4 w-4 mt-0.5 shrink-0" style={{ color: accent }} />
                 <div>
                   <p className="text-[11px] uppercase tracking-wider text-white/40">Hours</p>
-                  <p className="text-sm text-white/80">9:00 &ndash; 23:00 Daily</p>
+                  {hours.map((h) => (
+                    <p key={h.label} className="text-sm text-white/80">
+                      <span className="text-white/40">{h.label}</span> {h.value}
+                    </p>
+                  ))}
                 </div>
               </div>
             </div>

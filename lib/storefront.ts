@@ -191,6 +191,95 @@ export async function getContactInfo(tenantId: string) {
   return prisma.contactInfo.findUnique({ where: { tenantId } });
 }
 
+/** Social profile links shown in the footer, in admin-defined order. */
+export async function getSocialLinks(tenantId: string) {
+  return prisma.socialLink.findMany({
+    where: { tenantId, isVisible: true },
+    orderBy: { sortOrder: 'asc' },
+    select: { platform: true, url: true },
+  });
+}
+
+// ── Business hours ────────────────────────────────────────
+export const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+export type DayKey = (typeof DAY_KEYS)[number];
+
+export interface DayHours {
+  open: string;   // "16:00"
+  close: string;  // "23:00"
+  closed?: boolean;
+}
+export type BusinessHours = Partial<Record<DayKey, DayHours>>;
+
+const DAY_LABELS: Record<DayKey, string> = {
+  mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
+};
+
+/** Shown until an admin sets real hours in Admin -> Store Location. */
+export const DEFAULT_BUSINESS_HOURS: BusinessHours = DAY_KEYS.reduce<BusinessHours>((acc, day) => {
+  acc[day] = { open: '16:00', close: '23:00' };
+  return acc;
+}, {});
+
+function isDayHours(v: unknown): v is DayHours {
+  if (!v || typeof v !== 'object') return false;
+  const d = v as Record<string, unknown>;
+  return typeof d.open === 'string' && typeof d.close === 'string';
+}
+
+/** Parse the ContactInfo.businessHours JSON blob, falling back to the default. */
+export function parseBusinessHours(raw: unknown): BusinessHours {
+  if (!raw || typeof raw !== 'object') return DEFAULT_BUSINESS_HOURS;
+  const src = raw as Record<string, unknown>;
+  const out: BusinessHours = {};
+  for (const day of DAY_KEYS) {
+    const v = src[day];
+    if (isDayHours(v)) out[day] = { open: v.open, close: v.close, closed: Boolean((v as DayHours).closed) };
+  }
+  return Object.keys(out).length > 0 ? out : DEFAULT_BUSINESS_HOURS;
+}
+
+/**
+ * Collapse the week into display rows, merging consecutive days that share
+ * the same hours — so a uniform week reads "Mon – Sun  16:00 – 23:00"
+ * rather than seven identical lines.
+ */
+export function formatBusinessHours(raw: unknown): { label: string; value: string }[] {
+  const hours = parseBusinessHours(raw);
+  const rows: { label: string; value: string }[] = [];
+
+  let runStart: DayKey | null = null;
+  let runEnd: DayKey | null = null;
+  let runValue = '';
+
+  const valueFor = (day: DayKey): string => {
+    const h = hours[day];
+    if (!h || h.closed) return 'Closed';
+    return `${h.open} – ${h.close}`;
+  };
+
+  const flush = () => {
+    if (!runStart || !runEnd) return;
+    const label = runStart === runEnd ? DAY_LABELS[runStart] : `${DAY_LABELS[runStart]} – ${DAY_LABELS[runEnd]}`;
+    rows.push({ label, value: runValue });
+  };
+
+  for (const day of DAY_KEYS) {
+    const v = valueFor(day);
+    if (runStart && v === runValue) {
+      runEnd = day;
+      continue;
+    }
+    flush();
+    runStart = day;
+    runEnd = day;
+    runValue = v;
+  }
+  flush();
+
+  return rows;
+}
+
 export interface FeaturedSectionConfig {
   enabled: boolean;
   title: string;

@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, MapPin, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Loader2, Save, MapPin, CheckCircle2, AlertTriangle, Clock, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ContactInfo {
@@ -18,7 +19,35 @@ interface ContactInfo {
   country: string;
   latitude: number | null;
   longitude: number | null;
+  businessHours: Record<string, { open: string; close: string; closed?: boolean }> | null;
 }
+
+const DAYS = [
+  { key: 'mon', label: 'Monday' },
+  { key: 'tue', label: 'Tuesday' },
+  { key: 'wed', label: 'Wednesday' },
+  { key: 'thu', label: 'Thursday' },
+  { key: 'fri', label: 'Friday' },
+  { key: 'sat', label: 'Saturday' },
+  { key: 'sun', label: 'Sunday' },
+] as const;
+
+type DayKey = (typeof DAYS)[number]['key'];
+type HoursState = Record<DayKey, { open: string; close: string; closed: boolean }>;
+
+const DEFAULT_HOURS: HoursState = DAYS.reduce((acc, d) => {
+  acc[d.key] = { open: '16:00', close: '23:00', closed: false };
+  return acc;
+}, {} as HoursState);
+
+const SOCIAL_PLATFORMS = [
+  { key: 'FACEBOOK', label: 'Facebook', placeholder: 'https://facebook.com/yourpage' },
+  { key: 'INSTAGRAM', label: 'Instagram', placeholder: 'https://instagram.com/yourhandle' },
+  { key: 'TIKTOK', label: 'TikTok', placeholder: 'https://tiktok.com/@yourhandle' },
+  { key: 'YOUTUBE', label: 'YouTube', placeholder: 'https://youtube.com/@yourchannel' },
+  { key: 'TWITTER', label: 'X / Twitter', placeholder: 'https://x.com/yourhandle' },
+  { key: 'LINKEDIN', label: 'LinkedIn', placeholder: 'https://linkedin.com/company/you' },
+] as const;
 
 export default function StoreLocationPage() {
   const { authHeaders, hasPermission } = useAdmin();
@@ -28,6 +57,10 @@ export default function StoreLocationPage() {
   const [coords, setCoords] = useState<{ latitude: number | null; longitude: number | null }>({ latitude: null, longitude: null });
   const [radiusMiles, setRadiusMiles] = useState('');
   const [radiusSaving, setRadiusSaving] = useState(false);
+  const [hours, setHours] = useState<HoursState>(DEFAULT_HOURS);
+  const [hoursSaving, setHoursSaving] = useState(false);
+  const [social, setSocial] = useState<Record<string, string>>({});
+  const [socialSaving, setSocialSaving] = useState(false);
 
   const canRead = hasPermission('config:settings:read');
   const canWrite = hasPermission('config:settings:write');
@@ -36,9 +69,10 @@ export default function StoreLocationPage() {
     if (!canRead) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [contactRes, radiusRes] = await Promise.all([
+      const [contactRes, radiusRes, socialRes] = await Promise.all([
         fetch('/api/v1/contact-info', { headers: authHeaders() }),
         fetch('/api/v1/config/delivery/radiusMiles', { headers: authHeaders() }),
+        fetch('/api/v1/social-links', { headers: authHeaders() }),
       ]);
       if (contactRes.ok) {
         const json = await contactRes.json();
@@ -49,11 +83,25 @@ export default function StoreLocationPage() {
             city: c.city ?? '', postcode: c.postcode ?? '', country: c.country ?? 'GB',
           });
           setCoords({ latitude: c.latitude, longitude: c.longitude });
+          if (c.businessHours) {
+            setHours(DAYS.reduce((acc, d) => {
+              const saved = c.businessHours?.[d.key];
+              acc[d.key] = saved
+                ? { open: saved.open, close: saved.close, closed: Boolean(saved.closed) }
+                : DEFAULT_HOURS[d.key];
+              return acc;
+            }, {} as HoursState));
+          }
         }
       }
       if (radiusRes.ok) {
         const json = await radiusRes.json();
         if (typeof json.data?.value === 'number') setRadiusMiles(String(json.data.value));
+      }
+      if (socialRes.ok) {
+        const json = await socialRes.json();
+        const links = (json.data?.socialLinks ?? []) as { platform: string; url: string }[];
+        setSocial(Object.fromEntries(links.map((l) => [l.platform, l.url])));
       }
     } finally {
       setLoading(false);
@@ -86,6 +134,50 @@ export default function StoreLocationPage() {
       toast.error((e as Error).message || 'Failed to save');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveHours() {
+    setHoursSaving(true);
+    try {
+      const businessHours = Object.fromEntries(
+        DAYS.map((d) => [d.key, { open: hours[d.key].open, close: hours[d.key].close, closed: hours[d.key].closed }]),
+      );
+      const res = await fetch('/api/v1/contact-info', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders(),
+        // The API merges, but send the current contact fields too so a
+        // partial payload can never blank them out.
+        body: JSON.stringify({ ...form, businessHours }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message);
+      toast.success('Opening hours saved');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to save opening hours');
+    } finally {
+      setHoursSaving(false);
+    }
+  }
+
+  async function saveSocial() {
+    setSocialSaving(true);
+    try {
+      const links = SOCIAL_PLATFORMS.map((p) => ({ platform: p.key, url: (social[p.key] ?? '').trim() }));
+      const res = await fetch('/api/v1/social-links', {
+        method: 'PUT',
+        credentials: 'include',
+        headers: authHeaders(),
+        body: JSON.stringify({ links }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error?.message);
+      toast.success('Social links saved');
+    } catch (e) {
+      toast.error((e as Error).message || 'Failed to save social links');
+    } finally {
+      setSocialSaving(false);
     }
   }
 
@@ -211,6 +303,97 @@ export default function StoreLocationPage() {
               </Button>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Opening hours ── */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="h-4 w-4" /> Opening Hours
+          </CardTitle>
+          <CardDescription>
+            Shown in the storefront footer and on the Contact page. Consecutive days with the same hours are
+            grouped automatically (e.g. &ldquo;Mon &ndash; Sun 16:00 &ndash; 23:00&rdquo;).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {DAYS.map((d) => (
+            <div key={d.key} className="flex flex-wrap items-center gap-3">
+              <Label className="w-24 text-sm">{d.label}</Label>
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={!hours[d.key].closed}
+                  disabled={!canWrite}
+                  onCheckedChange={(v) => setHours((h) => ({ ...h, [d.key]: { ...h[d.key], closed: !v } }))}
+                  aria-label={`${d.label} open`}
+                />
+                <span className="text-xs text-muted-foreground w-14">
+                  {hours[d.key].closed ? 'Closed' : 'Open'}
+                </span>
+              </div>
+              {!hours[d.key].closed && (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="time"
+                    value={hours[d.key].open}
+                    disabled={!canWrite}
+                    onChange={(e) => setHours((h) => ({ ...h, [d.key]: { ...h[d.key], open: e.target.value } }))}
+                    className="w-32"
+                  />
+                  <span className="text-muted-foreground text-sm">to</span>
+                  <Input
+                    type="time"
+                    value={hours[d.key].close}
+                    disabled={!canWrite}
+                    onChange={(e) => setHours((h) => ({ ...h, [d.key]: { ...h[d.key], close: e.target.value } }))}
+                    className="w-32"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+          {canWrite && (
+            <div className="pt-2">
+              <Button onClick={saveHours} disabled={hoursSaving} size="sm">
+                {hoursSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                Save opening hours
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Social links ── */}
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Share2 className="h-4 w-4" /> Social Links
+          </CardTitle>
+          <CardDescription>
+            Paste the full profile URL. Only platforms you fill in appear as icons in the storefront footer —
+            leave one blank to remove it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {SOCIAL_PLATFORMS.map((p) => (
+            <div key={p.key} className="space-y-1.5">
+              <Label className="text-sm">{p.label}</Label>
+              <Input
+                type="url"
+                value={social[p.key] ?? ''}
+                disabled={!canWrite}
+                placeholder={p.placeholder}
+                onChange={(e) => setSocial((s) => ({ ...s, [p.key]: e.target.value }))}
+              />
+            </div>
+          ))}
+          {canWrite && (
+            <Button onClick={saveSocial} disabled={socialSaving} size="sm">
+              {socialSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+              Save social links
+            </Button>
+          )}
         </CardContent>
       </Card>
     </div>
