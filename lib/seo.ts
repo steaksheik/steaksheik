@@ -1,7 +1,24 @@
 
-/** Canonical site origin used for absolute URLs in metadata, sitemaps, and structured data. */
+/**
+ * Canonical site origin used for absolute URLs in metadata, sitemaps, structured
+ * data, and every link we email out (verification, password resets, invites).
+ *
+ * NEXTAUTH_URL wins when set, so a deployment can always be pinned explicitly.
+ * Without it we use the production domain Vercel injects, rather than falling
+ * straight to localhost — a missing variable used to mean every verification
+ * email shipped a http://localhost:3000 link that no customer could open.
+ *
+ * Note this is the *deployment's* address, so it must be updated when the site
+ * changes domain; a stale value sends real customers to a dead host.
+ */
 export function getSiteUrl(): string {
-  return process.env.NEXTAUTH_URL ?? 'http://localhost:3000';
+  const explicit = process.env.NEXTAUTH_URL?.trim();
+  if (explicit) return explicit.replace(/\/+$/, '');
+
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (vercel) return `https://${vercel.replace(/^https?:\/\//, '').replace(/\/+$/, '')}`;
+
+  return 'http://localhost:3000';
 }
 
 /**
