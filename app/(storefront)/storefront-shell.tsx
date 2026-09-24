@@ -300,7 +300,7 @@ export function StorefrontShell({
             <div>
               <h4 className="text-xs font-bold uppercase tracking-widest text-white mb-4">Contact</h4>
               <ul className="space-y-2.5 text-sm text-white/50">
-                <li><a href="mailto:steaksheikh4@gmail.com" className="hover:text-white transition-colors">steaksheikh4@gmail.com</a></li>
+                <li><a href="mailto:sonnyss141@gmail.com" className="hover:text-white transition-colors">sonnyss141@gmail.com</a></li>
                 <li><a href="tel:+441234567890" className="hover:text-white transition-colors">0123 456 7890</a></li>
                 <li>9:00 &ndash; 23:00 Daily</li>
               </ul>

@@ -9,7 +9,7 @@ interface SendEmailOpts {
   replyTo?: string;
 }
 
-const ADMIN_EMAIL = 'steaksheikh4@gmail.com';
+const ADMIN_EMAIL = 'sonnyss141@gmail.com';
 
 /**
  * Attempt to send through the admin-configured email provider
