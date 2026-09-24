@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useCustomer } from '@/lib/customer-context';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
@@ -10,7 +10,7 @@ export default function VerifyEmailPage() {
   const ACCENT = useAccentColor();
   const { refresh } = useCustomer();
   const [token, setToken] = useState<string | null>(null);
-  const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'error'>('idle');
+  const [status, setStatus] = useState<'idle' | 'ready' | 'verifying' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
 
   // Read ?token= without useSearchParams, matching account/login and
@@ -20,9 +20,19 @@ export default function VerifyEmailPage() {
     setToken(new URLSearchParams(window.location.search).get('token'));
   }, []);
 
+  // Deliberately NOT verified on load. Corporate mail security (Defender,
+  // Proofpoint, Mimecast) fetches and executes every link in inbound mail to
+  // scan it, which silently consumed the token and marked accounts verified
+  // with no human involved — that's how bot signups on harvested addresses
+  // ended up flagged emailVerified. A scanner won't press a button.
   useEffect(() => {
     if (token === null) return;
     if (!token) { setStatus('error'); setMessage('This link is missing its token.'); return; }
+    setStatus('ready');
+  }, [token]);
+
+  const confirmEmail = useCallback(() => {
+    if (!token) return;
     setStatus('verifying');
     fetch('/api/v1/customers/verify-email', {
       method: 'POST',
@@ -51,7 +61,30 @@ export default function VerifyEmailPage() {
         CONFIRM EMAIL
       </h1>
 
-      {(status === 'idle' || status === 'verifying') && (
+      {status === 'idle' && (
+        <div className="flex flex-col items-center gap-3 py-6 text-neutral-400">
+          <Loader2 className="h-6 w-6 animate-spin" style={{ color: ACCENT }} />
+          <p className="text-sm">Loading…</p>
+        </div>
+      )}
+
+      {status === 'ready' && (
+        <div className="flex flex-col items-center gap-4 py-6">
+          <p className="text-sm text-neutral-300">
+            Click below to confirm this is your email address.
+          </p>
+          <button
+            type="button"
+            onClick={confirmEmail}
+            className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02]"
+            style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
+          >
+            Confirm My Email
+          </button>
+        </div>
+      )}
+
+      {status === 'verifying' && (
         <div className="flex flex-col items-center gap-3 py-6 text-neutral-400">
           <Loader2 className="h-6 w-6 animate-spin" style={{ color: ACCENT }} />
           <p className="text-sm">Confirming your email…</p>
