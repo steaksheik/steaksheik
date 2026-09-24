@@ -59,6 +59,9 @@ export default function StoreLocationPage() {
   const [radiusSaving, setRadiusSaving] = useState(false);
   const [hours, setHours] = useState<HoursState>(DEFAULT_HOURS);
   const [hoursSaving, setHoursSaving] = useState(false);
+  // "Same hours every day" is a UI convenience only — storage is always
+  // per-day, so a client can switch to a varied week without losing anything.
+  const [sameEveryDay, setSameEveryDay] = useState(true);
   const [social, setSocial] = useState<Record<string, string>>({});
   const [socialSaving, setSocialSaving] = useState(false);
 
@@ -84,13 +87,23 @@ export default function StoreLocationPage() {
           });
           setCoords({ latitude: c.latitude, longitude: c.longitude });
           if (c.businessHours) {
-            setHours(DAYS.reduce((acc, d) => {
+            const loaded = DAYS.reduce((acc, d) => {
               const saved = c.businessHours?.[d.key];
               acc[d.key] = saved
                 ? { open: saved.open, close: saved.close, closed: Boolean(saved.closed) }
                 : DEFAULT_HOURS[d.key];
               return acc;
-            }, {} as HoursState));
+            }, {} as HoursState);
+            setHours(loaded);
+            // Open in whichever mode matches what's actually saved.
+            const first = loaded[DAYS[0].key];
+            setSameEveryDay(
+              DAYS.every((d) =>
+                loaded[d.key].open === first.open &&
+                loaded[d.key].close === first.close &&
+                loaded[d.key].closed === first.closed,
+              ),
+            );
           }
         }
       }
@@ -137,11 +150,28 @@ export default function StoreLocationPage() {
     }
   }
 
+  /** Apply Monday's times to every other day. */
+  function copyMondayToAll() {
+    const src = hours.mon;
+    setHours(DAYS.reduce((acc, d) => {
+      acc[d.key] = { ...src };
+      return acc;
+    }, {} as HoursState));
+    toast.success('Monday’s hours copied to every day');
+  }
+
   async function saveHours() {
     setHoursSaving(true);
     try {
+      // In "same every day" mode Monday's inputs are the single source —
+      // fan them out so storage stays per-day either way.
+      const effective: HoursState = sameEveryDay
+        ? DAYS.reduce((acc, d) => { acc[d.key] = { ...hours.mon }; return acc; }, {} as HoursState)
+        : hours;
+      if (sameEveryDay) setHours(effective);
+
       const businessHours = Object.fromEntries(
-        DAYS.map((d) => [d.key, { open: hours[d.key].open, close: hours[d.key].close, closed: hours[d.key].closed }]),
+        DAYS.map((d) => [d.key, { open: effective[d.key].open, close: effective[d.key].close, closed: effective[d.key].closed }]),
       );
       const res = await fetch('/api/v1/contact-info', {
         method: 'PUT',
@@ -318,7 +348,51 @@ export default function StoreLocationPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {DAYS.map((d) => (
+          {/* Mode switch: one set of times for the week, or per-day control. */}
+          <div className="flex items-center gap-3 pb-1">
+            <Switch
+              checked={sameEveryDay}
+              disabled={!canWrite}
+              onCheckedChange={setSameEveryDay}
+              aria-label="Same hours every day"
+            />
+            <div>
+              <Label className="text-sm">Same hours every day</Label>
+              <p className="text-xs text-muted-foreground">
+                Turn off to set different times per day, or close individual days.
+              </p>
+            </div>
+          </div>
+
+          {sameEveryDay ? (
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <Label className="w-24 text-sm">Mon &ndash; Sun</Label>
+              <Input
+                type="time"
+                value={hours.mon.open}
+                disabled={!canWrite}
+                onChange={(e) => setHours((h) => ({ ...h, mon: { ...h.mon, open: e.target.value, closed: false } }))}
+                className="w-32"
+              />
+              <span className="text-muted-foreground text-sm">to</span>
+              <Input
+                type="time"
+                value={hours.mon.close}
+                disabled={!canWrite}
+                onChange={(e) => setHours((h) => ({ ...h, mon: { ...h.mon, close: e.target.value, closed: false } }))}
+                className="w-32"
+              />
+            </div>
+          ) : (
+            <>
+              {canWrite && (
+                <div className="pb-1">
+                  <Button variant="outline" size="sm" onClick={copyMondayToAll}>
+                    Copy Monday to all days
+                  </Button>
+                </div>
+              )}
+              {DAYS.map((d) => (
             <div key={d.key} className="flex flex-wrap items-center gap-3">
               <Label className="w-24 text-sm">{d.label}</Label>
               <div className="flex items-center gap-2">
@@ -352,7 +426,9 @@ export default function StoreLocationPage() {
                 </div>
               )}
             </div>
-          ))}
+              ))}
+            </>
+          )}
           {canWrite && (
             <div className="pt-2">
               <Button onClick={saveHours} disabled={hoursSaving} size="sm">
