@@ -6,12 +6,14 @@ import { publicTenant, getClientIp } from '@/lib/auth/context';
 import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit/service';
 import { domainCanReceiveMail } from '@/lib/security/email-domain';
+import { verifyTurnstile } from '@/lib/security/turnstile';
 
 export const dynamic = 'force-dynamic';
 
 const schema = z.object({
   name: z.string().trim().max(200).optional().or(z.literal('')),
   email: z.string().trim().toLowerCase().email(),
+  turnstileToken: z.string().optional(),
 });
 
 /**
@@ -29,6 +31,18 @@ const schema = z.object({
 export const POST = withRoute(async (req: NextRequest) => {
   const tenantId = await publicTenant(req);
   const body = schema.parse(await req.json().catch(() => ({})));
+
+  // Bot check before anything is written — this form was being used to farm
+  // junk contacts. No-ops entirely when Turnstile isn't configured.
+  const bot = await verifyTurnstile({
+    token: body.turnstileToken,
+    action: 'newsletter',
+    remoteIp: getClientIp(req),
+    host: req.headers.get('host'),
+  });
+  if (!bot.ok) {
+    return fail('BOT_CHECK_FAILED', 'Could not verify you are human — please refresh and try again', { status: 403 });
+  }
 
   const domain = body.email.split('@')[1];
   if (!domain || !(await domainCanReceiveMail(domain))) {

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useCart, type CartModifier } from '@/lib/cart-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Truck, Store, ArrowLeft, Loader2, Tag, X } from 'lucide-react';
 import Link from 'next/link';
 import { useAccentColor } from '../theme-context';
+import { TurnstileWidget, type TurnstileHandle } from '../turnstile-widget';
 
 function fmt(n: number) {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(n);
@@ -33,6 +34,8 @@ export default function CheckoutPage() {
   const [checkingSession, setCheckingSession] = useState(true);
   const [promoInput, setPromoInput] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '', phone: '',
@@ -100,10 +103,15 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           email: form.regEmail, password: form.regPassword,
           firstName: form.regFirstName, lastName: form.regLastName, phone: form.regPhone,
+          turnstileToken: turnstileToken ?? undefined,
         }),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.error?.message);
+      if (!json.success) {
+        // Turnstile tokens are single-use — issue a fresh one for the retry.
+        turnstileRef.current?.reset();
+        throw new Error(json.error?.message);
+      }
       // Auto-login
       const lr = await fetch('/api/v1/customers/login', {
         method: 'POST',
@@ -267,6 +275,7 @@ export default function CheckoutPage() {
                   <input type="email" placeholder="Email" value={form.regEmail} onChange={e => set('regEmail', e.target.value)} className={inputCls} />
                   <input type="password" placeholder="Password (min 8 chars)" value={form.regPassword} onChange={e => set('regPassword', e.target.value)} className={inputCls} />
                   <input placeholder="Phone (optional)" value={form.regPhone} onChange={e => set('regPhone', e.target.value)} className={inputCls} />
+                  <TurnstileWidget ref={turnstileRef} action="signup" onToken={setTurnstileToken} />
                   <button disabled={loading} onClick={handleRegister} className="rounded-lg px-6 py-3 text-sm font-bold uppercase tracking-wide disabled:opacity-50" style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}>
                     {loading ? 'Creating…' : 'Create Account'}
                   </button>

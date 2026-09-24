@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import type { HeroConfig, PromoCard } from '@/lib/storefront';
 import { useCustomer } from '@/lib/customer-context';
 import { useBrandTheme } from './theme-context';
+import { TurnstileWidget, type TurnstileHandle } from './turnstile-widget';
 import {
   Flame,
   Truck,
@@ -167,6 +168,8 @@ export function HomeClient({
   const [nlName, setNlName] = useState('');
   const [nlEmail, setNlEmail] = useState('');
   const [nlSubmitting, setNlSubmitting] = useState(false);
+  const [nlToken, setNlToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   const submitNewsletter = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,7 +182,7 @@ export function HomeClient({
       const res = await fetch('/api/v1/newsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: nlName.trim(), email: nlEmail.trim() }),
+        body: JSON.stringify({ name: nlName.trim(), email: nlEmail.trim(), turnstileToken: nlToken ?? undefined }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message || 'Something went wrong');
@@ -189,6 +192,8 @@ export function HomeClient({
     } catch (err) {
       toast.error((err as Error).message || 'Failed to subscribe \u2014 please try again');
     } finally {
+      // Turnstile tokens are single-use \u2014 issue a fresh one for any retry.
+      turnstileRef.current?.reset();
       setNlSubmitting(false);
     }
   };
@@ -531,29 +536,32 @@ export function HomeClient({
             <h2 className="font-heading text-2xl font-extrabold">JOIN THE {brandName.toUpperCase()} FAMILY</h2>
             <p className="mt-2 text-sm text-neutral-500 max-w-md">Be the first to know about new menu items, special offers and exclusive rewards.</p>
           </div>
-          <form onSubmit={submitNewsletter} className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={nlName}
-              onChange={(e) => setNlName(e.target.value)}
-              placeholder="Your name"
-              className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
-            />
-            <input
-              type="email"
-              value={nlEmail}
-              onChange={(e) => setNlEmail(e.target.value)}
-              placeholder="Your email"
-              className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
-            />
-            <button
-              type="submit"
-              disabled={nlSubmitting}
-              className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02] disabled:opacity-60"
-              style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
-            >
-              {nlSubmitting ? 'Joining…' : 'Join Now'}
-            </button>
+          <form onSubmit={submitNewsletter} className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={nlName}
+                onChange={(e) => setNlName(e.target.value)}
+                placeholder="Your name"
+                className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
+              />
+              <input
+                type="email"
+                value={nlEmail}
+                onChange={(e) => setNlEmail(e.target.value)}
+                placeholder="Your email"
+                className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
+              />
+              <button
+                type="submit"
+                disabled={nlSubmitting}
+                className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02] disabled:opacity-60"
+                style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
+              >
+                {nlSubmitting ? 'Joining…' : 'Join Now'}
+              </button>
+            </div>
+            <TurnstileWidget ref={turnstileRef} action="newsletter" theme="light" onToken={setNlToken} />
           </form>
         </div>
       </section>

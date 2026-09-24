@@ -1,16 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2 } from 'lucide-react';
 import { useAccentColor } from '../../theme-context';
+import { TurnstileWidget, type TurnstileHandle } from '../../turnstile-widget';
 
 export default function ForgotPasswordPage() {
   const ACCENT = useAccentColor();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,15 +22,18 @@ export default function ForgotPasswordPage() {
       const res = await fetch('/api/v1/customers/password/reset-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, turnstileToken: turnstileToken ?? undefined }),
       });
       const json = await res.json();
       if (json.success) {
         setSent(true);
       } else {
+        // Turnstile tokens are single-use — issue a fresh one for the retry.
+        turnstileRef.current?.reset();
         toast.error(json.error?.message || 'Something went wrong');
       }
     } catch {
+      turnstileRef.current?.reset();
       toast.error('Network error. Please try again.');
     } finally {
       setLoading(false);
@@ -62,6 +68,7 @@ export default function ForgotPasswordPage() {
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a96e]/50"
             />
           </div>
+          <TurnstileWidget ref={turnstileRef} action="password-reset" onToken={setTurnstileToken} />
           <button
             type="submit"
             disabled={loading}

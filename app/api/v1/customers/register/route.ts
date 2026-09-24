@@ -8,6 +8,7 @@ import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { sendWelcomeEmail } from '@/lib/notifications/email-service';
 import { issueEmailVerification } from '@/lib/auth/email-verification';
+import { verifyTurnstile } from '@/lib/security/turnstile';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +18,7 @@ const registerSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   phone: z.string().optional(),
+  turnstileToken: z.string().optional(),
   // PECR/GDPR: marketing consent is opt-in and never assumed. Both default
   // false so an omitted field (older clients, API callers) never accidentally
   // opts someone in.
@@ -28,6 +30,18 @@ const registerSchema = z.object({
 export const POST = withRoute(async (req: NextRequest) => {
   const tenantId = await publicTenant(req);
   const body = registerSchema.parse(await req.json());
+
+  // Bot check before creating an account — this endpoint was being used to
+  // farm junk customer records. No-ops entirely when Turnstile isn't set up.
+  const bot = await verifyTurnstile({
+    token: body.turnstileToken,
+    action: 'signup',
+    remoteIp: getClientIp(req),
+    host: req.headers.get('host'),
+  });
+  if (!bot.ok) {
+    return fail('BOT_CHECK_FAILED', 'Could not verify you are human — please refresh and try again', { status: 403 });
+  }
 
   // Check if already exists
   const existing = await prisma.customer.findUnique({

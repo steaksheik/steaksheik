@@ -1,19 +1,23 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { withRoute } from '@/lib/api/route';
-import { ok } from '@/lib/api/response';
+import { ok, fail } from '@/lib/api/response';
 import { publicTenant, getClientIp } from '@/lib/auth/context';
 import { prisma } from '@/lib/db';
 import { auditLog } from '@/lib/audit/service';
 import { randomToken } from '@/lib/security/crypto';
 import { getSiteUrl } from '@/lib/seo';
 import { sendCustomerPasswordResetEmail } from '@/lib/notifications/email-service';
+import { verifyTurnstile } from '@/lib/security/turnstile';
 
 export const dynamic = 'force-dynamic';
 
 const RESET_TOKEN_TTL_MS = 60 * 60 * 1000; // 1 hour
 
-const schema = z.object({ email: z.string().email() });
+const schema = z.object({
+  email: z.string().email(),
+  turnstileToken: z.string().optional(),
+});
 
 /**
  * POST /api/v1/customers/password/reset-request — public. Always returns
@@ -23,6 +27,18 @@ const schema = z.object({ email: z.string().email() });
 export const POST = withRoute(async (req: NextRequest) => {
   const body = schema.parse(await req.json().catch(() => ({})));
   const tenantId = await publicTenant(req);
+
+  // Bot check before any email goes out — stops this being used to spam a
+  // real person's inbox with reset links. No-ops when Turnstile isn't set up.
+  const bot = await verifyTurnstile({
+    token: body.turnstileToken,
+    action: 'password-reset',
+    remoteIp: getClientIp(req),
+    host: req.headers.get('host'),
+  });
+  if (!bot.ok) {
+    return fail('BOT_CHECK_FAILED', 'Could not verify you are human — please refresh and try again', { status: 403 });
+  }
 
   const customer = await prisma.customer.findUnique({
     where: { tenantId_email: { tenantId, email: body.email.toLowerCase() } },

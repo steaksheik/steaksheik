@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCustomer } from '@/lib/customer-context';
 import { toast } from 'sonner';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAccentColor } from '../../theme-context';
+import { TurnstileWidget, type TurnstileHandle } from '../../turnstile-widget';
 
 export default function CustomerLoginPage() {
   const ACCENT = useAccentColor();
@@ -21,6 +22,8 @@ export default function CustomerLoginPage() {
   const [loading, setLoading] = useState(false);
   const [emailConsent, setEmailConsent] = useState(false);
   const [smsConsent, setSmsConsent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   // Read ?mode=register&redirect=/account/loyalty without useSearchParams,
   // so this page doesn't need a Suspense boundary just for a deep link.
@@ -60,8 +63,13 @@ export default function CustomerLoginPage() {
             email, password, firstName, lastName,
             marketingEmailConsent: emailConsent,
             marketingSmsConsent: smsConsent,
+            turnstileToken: turnstileToken ?? undefined,
           }),
         });
+        if (!res.ok) {
+          // Turnstile tokens are single-use — a rejected signup needs a fresh one.
+          turnstileRef.current?.reset();
+        }
         if (res.ok) {
           // Auto-login after registration
           const loginRes = await fetch('/api/v1/customers/login', {
@@ -172,6 +180,9 @@ export default function CustomerLoginPage() {
               <span>Send me marketing texts about offers and new menu items. Reply STOP anytime to opt out.</span>
             </label>
           </div>
+        )}
+        {mode === 'register' && (
+          <TurnstileWidget ref={turnstileRef} action="signup" onToken={setTurnstileToken} />
         )}
         <button
           type="submit"
