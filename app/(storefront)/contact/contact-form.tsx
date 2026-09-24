@@ -19,9 +19,10 @@ export function ContactForm() {
   const [turnstileFailed, setTurnstileFailed] = useState(false);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
 
-  // Only wait on a token when this build actually renders a widget — otherwise
-  // the button would never enable on an unconfigured deployment.
-  const awaitingToken = turnstileConfigured && !turnstileToken;
+  // Only wait on a token when this build actually renders a widget, and stop
+  // waiting the moment it reports failure — a broken check must never leave
+  // the visitor with a button they can't click.
+  const awaitingToken = turnstileConfigured && !turnstileToken && !turnstileFailed;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,8 +114,9 @@ export function ContactForm() {
       />
 
       {turnstileFailed ? (
-        <p className="text-xs text-red-400">
-          The human-verification check couldn&apos;t load. Please refresh the page and try again.
+        <p className="text-xs text-amber-400/80">
+          The human-verification check didn&apos;t load — refreshing the page usually fixes it. You can
+          still send, but it may not get through.
         </p>
       ) : awaitingToken ? (
         <p className="text-xs text-white/40">Verifying you&apos;re human…</p>

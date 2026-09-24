@@ -169,6 +169,7 @@ export function HomeClient({
   const [nlEmail, setNlEmail] = useState('');
   const [nlSubmitting, setNlSubmitting] = useState(false);
   const [nlToken, setNlToken] = useState<string | null>(null);
+  const [nlTurnstileFailed, setNlTurnstileFailed] = useState(false);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   const submitNewsletter = async (e: React.FormEvent) => {
@@ -554,15 +555,21 @@ export function HomeClient({
               />
               <button
                 type="submit"
-                disabled={nlSubmitting || (turnstileConfigured && !nlToken)}
+                disabled={nlSubmitting || (turnstileConfigured && !nlToken && !nlTurnstileFailed)}
                 className="rounded-md px-7 py-3 text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.02] disabled:opacity-60"
                 style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
               >
                 {nlSubmitting ? 'Joining…' : 'Join Now'}
               </button>
             </div>
-            <TurnstileWidget ref={turnstileRef} action="newsletter" theme="light" onToken={setNlToken} />
-            {turnstileConfigured && !nlToken && (
+            <TurnstileWidget
+              ref={turnstileRef}
+              action="newsletter"
+              theme="light"
+              onToken={setNlToken}
+              onError={() => setNlTurnstileFailed(true)}
+            />
+            {turnstileConfigured && !nlToken && !nlTurnstileFailed && (
               <p className="text-xs text-neutral-500">Verifying you&apos;re human…</p>
             )}
           </form>

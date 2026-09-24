@@ -15,6 +15,9 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
  * needs to reset its own widget to get a fresh token for a retry.
  */
 
+/** How long a form waits for a token before it stops blocking submission. */
+const FAILSAFE_MS = 15_000;
+
 const SCRIPT_ID = 'cf-turnstile-script';
 const SCRIPT_SRC = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
 
@@ -90,12 +93,13 @@ export const TurnstileWidget = forwardRef<
     /** Receives the token, or null when it expires / errors. */
     onToken: (token: string | null) => void;
     /**
-     * Fired when the challenge cannot complete — most often because the site's
-     * hostname isn't on the widget's domain list in the Cloudflare dashboard.
-     * Lets a form say "verification failed to load" instead of sitting on a
-     * disabled submit button with no explanation.
+     * Fired when the challenge cannot complete — a blocked script, a hostname
+     * missing from the widget's domain list, or simply no token within
+     * FAILSAFE_MS. Forms use it to stop waiting: a broken Turnstile must
+     * degrade to "the server decides", never to a submit button that can
+     * never be clicked.
      */
-    onError?: (code: 'error' | 'expired') => void;
+    onError?: (code: 'error' | 'expired' | 'timeout') => void;
     /** Match the surrounding section — the storefront is dark, the newsletter band is light. */
     theme?: 'auto' | 'light' | 'dark';
     className?: string;
@@ -103,6 +107,7 @@ export const TurnstileWidget = forwardRef<
 >(function TurnstileWidget({ action, onToken, onError, theme = 'dark', className }, ref) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
+  const gotTokenRef = useRef(false);
   // Keep the latest callbacks without re-rendering the widget when they change.
   const onTokenRef = useRef(onToken);
   onTokenRef.current = onToken;
@@ -122,6 +127,13 @@ export const TurnstileWidget = forwardRef<
     if (!SITEKEY) return;
     let cancelled = false;
 
+    // If no token has arrived by now, something is wrong that the visitor can
+    // neither see nor fix (script blocked by CSP, widget domain misconfigured).
+    // Tell the form so it stops waiting on us.
+    const failsafe = setTimeout(() => {
+      if (!cancelled && !gotTokenRef.current) onErrorRef.current?.('timeout');
+    }, FAILSAFE_MS);
+
     loadTurnstileScript().then(() => {
       if (cancelled || !containerRef.current || !window.turnstile) return;
       if (widgetIdRef.current) return; // already rendered
@@ -129,7 +141,10 @@ export const TurnstileWidget = forwardRef<
         sitekey: SITEKEY,
         action,
         theme,
-        callback: (token: string) => onTokenRef.current(token),
+        callback: (token: string) => {
+          gotTokenRef.current = true;
+          onTokenRef.current(token);
+        },
         'expired-callback': () => {
           onTokenRef.current(null);
           onErrorRef.current?.('expired');
@@ -143,6 +158,7 @@ export const TurnstileWidget = forwardRef<
 
     return () => {
       cancelled = true;
+      clearTimeout(failsafe);
       if (widgetIdRef.current && window.turnstile) {
         window.turnstile.remove(widgetIdRef.current);
         widgetIdRef.current = null;

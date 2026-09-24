@@ -13,6 +13,7 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileFailed, setTurnstileFailed] = useState(false);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -68,13 +69,18 @@ export default function ForgotPasswordPage() {
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#c9a96e]/50"
             />
           </div>
-          <TurnstileWidget ref={turnstileRef} action="password-reset" onToken={setTurnstileToken} />
-          {turnstileConfigured && !turnstileToken && (
+          <TurnstileWidget
+            ref={turnstileRef}
+            action="password-reset"
+            onToken={setTurnstileToken}
+            onError={() => setTurnstileFailed(true)}
+          />
+          {turnstileConfigured && !turnstileToken && !turnstileFailed && (
             <p className="text-xs text-neutral-500">Verifying you&apos;re human…</p>
           )}
           <button
             type="submit"
-            disabled={loading || (turnstileConfigured && !turnstileToken)}
+            disabled={loading || (turnstileConfigured && !turnstileToken && !turnstileFailed)}
             className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.01]"
             style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
           >

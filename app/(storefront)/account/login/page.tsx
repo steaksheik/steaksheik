@@ -23,6 +23,7 @@ export default function CustomerLoginPage() {
   const [emailConsent, setEmailConsent] = useState(false);
   const [smsConsent, setSmsConsent] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileFailed, setTurnstileFailed] = useState(false);
   const turnstileRef = useRef<TurnstileHandle | null>(null);
 
   // Read ?mode=register&redirect=/account/loyalty without useSearchParams,
@@ -183,8 +184,13 @@ export default function CustomerLoginPage() {
         )}
         {mode === 'register' && (
           <>
-            <TurnstileWidget ref={turnstileRef} action="signup" onToken={setTurnstileToken} />
-            {turnstileConfigured && !turnstileToken && (
+            <TurnstileWidget
+              ref={turnstileRef}
+              action="signup"
+              onToken={setTurnstileToken}
+              onError={() => setTurnstileFailed(true)}
+            />
+            {turnstileConfigured && !turnstileToken && !turnstileFailed && (
               <p className="text-xs text-neutral-500">Verifying you&apos;re human…</p>
             )}
           </>
@@ -192,7 +198,10 @@ export default function CustomerLoginPage() {
         <button
           type="submit"
           // Sign-in isn't Turnstile-protected, so only the register mode waits.
-          disabled={loading || (mode === 'register' && turnstileConfigured && !turnstileToken)}
+          disabled={
+            loading ||
+            (mode === 'register' && turnstileConfigured && !turnstileToken && !turnstileFailed)
+          }
           className="w-full flex items-center justify-center gap-2 py-3 rounded-lg text-sm font-bold uppercase tracking-wide transition-transform hover:scale-[1.01]"
           style={{ backgroundColor: ACCENT, color: '#0a0a0a' }}
         >
