@@ -38,6 +38,9 @@ interface Brand {
   description: string | null;
   logoUrl: string | null;
   faviconUrl: string | null;
+  logoHeightDesktop: number | null;
+  logoHeightMobile: number | null;
+  logoMaxWidth: number | null;
   theme: Theme | null;
   assets: BrandAsset[];
 }
@@ -176,6 +179,11 @@ export default function BrandingPage() {
   const [description, setDescription] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [faviconUrl, setFaviconUrl] = useState('');
+  // Held as strings so the inputs can be cleared back to empty, which means
+  // "use the default" rather than zero.
+  const [logoHeightDesktop, setLogoHeightDesktop] = useState('');
+  const [logoHeightMobile, setLogoHeightMobile] = useState('');
+  const [logoMaxWidth, setLogoMaxWidth] = useState('');
 
   // Hero state
   const [hero, setHero] = useState<HeroState>(DEFAULT_HERO);
@@ -219,6 +227,9 @@ export default function BrandingPage() {
         setDescription(b.description ?? '');
         setLogoUrl(b.logoUrl ?? '');
         setFaviconUrl(b.faviconUrl ?? '');
+        setLogoHeightDesktop(b.logoHeightDesktop != null ? String(b.logoHeightDesktop) : '');
+        setLogoHeightMobile(b.logoHeightMobile != null ? String(b.logoHeightMobile) : '');
+        setLogoMaxWidth(b.logoMaxWidth != null ? String(b.logoMaxWidth) : '');
         if (b.theme) {
           setPrimaryColor(b.theme.primaryColor);
           setSecondaryColor(b.theme.secondaryColor);
@@ -482,6 +493,9 @@ export default function BrandingPage() {
           description: description.trim() || null,
           logoUrl: logoUrl.trim() || null,
           faviconUrl: faviconUrl.trim() || null,
+          logoHeightDesktop: logoHeightDesktop.trim() ? Number(logoHeightDesktop) : null,
+          logoHeightMobile: logoHeightMobile.trim() ? Number(logoHeightMobile) : null,
+          logoMaxWidth: logoMaxWidth.trim() ? Number(logoMaxWidth) : null,
         }),
       });
       const data = await res.json();
@@ -669,6 +683,71 @@ export default function BrandingPage() {
                     disabled={!canWrite}
                   />
                 </div>
+              </div>
+
+              <div className="border-t pt-4">
+                <Label className="text-sm font-medium">Logo size</Label>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Height in pixels. Leave blank to use the default (96px desktop, 80px mobile).
+                  Width scales automatically to keep the logo&apos;s proportions.
+                </p>
+                <div className="mt-3 grid gap-4 sm:grid-cols-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="logoHeightDesktop" className="text-xs">Desktop height</Label>
+                    <Input
+                      id="logoHeightDesktop"
+                      type="number"
+                      min={32}
+                      max={240}
+                      value={logoHeightDesktop}
+                      onChange={(e) => setLogoHeightDesktop(e.target.value)}
+                      placeholder="96"
+                      disabled={!canWrite}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="logoHeightMobile" className="text-xs">Mobile height</Label>
+                    <Input
+                      id="logoHeightMobile"
+                      type="number"
+                      min={24}
+                      max={160}
+                      value={logoHeightMobile}
+                      onChange={(e) => setLogoHeightMobile(e.target.value)}
+                      placeholder="80"
+                      disabled={!canWrite}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="logoMaxWidth" className="text-xs">Max width</Label>
+                    <Input
+                      id="logoMaxWidth"
+                      type="number"
+                      min={80}
+                      max={640}
+                      value={logoMaxWidth}
+                      onChange={(e) => setLogoMaxWidth(e.target.value)}
+                      placeholder="260"
+                      disabled={!canWrite}
+                    />
+                  </div>
+                </div>
+                {logoUrl && (
+                  <div className="mt-4 rounded-md border bg-muted/30 p-4">
+                    <p className="mb-2 text-xs text-muted-foreground">Desktop preview</p>
+                    <img
+                      src={logoUrl}
+                      alt="Logo preview"
+                      style={{
+                        height: `${Number(logoHeightDesktop) || 96}px`,
+                        maxWidth: `${Number(logoMaxWidth) || 260}px`,
+                        width: 'auto',
+                        objectFit: 'contain',
+                      }}
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

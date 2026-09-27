@@ -33,6 +33,10 @@ interface BrandInfo {
   name: string;
   tagline: string | null;
   logoUrl: string | null;
+  /** Admin -> Branding logo sizing, in px. null = use the built-in defaults. */
+  logoHeightDesktop?: number | null;
+  logoHeightMobile?: number | null;
+  logoMaxWidth?: number | null;
   theme: {
     primaryColor: string;
     accentColor: string;
@@ -122,6 +126,15 @@ export function StorefrontShell({
     toast.info('Use your browser menu and choose "Install app" or "Add to Home screen"');
   }
 
+  // Only the sizes actually set are passed through; an unset one is left out
+  // so the .brand-logo fallback applies instead of being overridden with a
+  // hardcoded value here.
+  const logoSizeVars: React.CSSProperties = {
+    ...(brand?.logoHeightMobile ? { '--logo-h-mobile': `${brand.logoHeightMobile}px` } : {}),
+    ...(brand?.logoHeightDesktop ? { '--logo-h-desktop': `${brand.logoHeightDesktop}px` } : {}),
+    ...(brand?.logoMaxWidth ? { '--logo-max-w': `${brand.logoMaxWidth}px` } : {}),
+  } as React.CSSProperties;
+
   // A logo image already carries the brand's identity on its own — showing
   // the business name/tagline text next to it is redundant clutter. Only
   // fall back to the text treatment when there's no logo to show instead.
@@ -131,7 +144,8 @@ export function StorefrontShell({
         <img
           src={brand.logoUrl}
           alt={brand.name ?? "Sonny's Sweet & Savory"}
-          className="h-20 sm:h-24 w-auto max-w-[260px] object-contain"
+          className="brand-logo"
+          style={logoSizeVars}
         />
       ) : (
         <>

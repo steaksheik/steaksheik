@@ -149,4 +149,25 @@
       radial-gradient(ellipse 40% 40% at 80% 0%, hsl(280 80% 60% / 0.1), transparent),
       radial-gradient(ellipse 40% 30% at 20% 10%, hsl(240 80% 60% / 0.08), transparent);
   }
+
+  /*
+   * Header logo, sized from Admin -> Branding.
+   *
+   * The heights arrive as inline CSS variables because Tailwind classes are
+   * compiled ahead of time and cannot take a value chosen at runtime. The
+   * fallbacks match the h-20 / sm:h-24 this replaced, so a brand that has set
+   * no size renders exactly as before.
+   */
+  .brand-logo {
+    height: var(--logo-h-mobile, 5rem);
+    width: auto;
+    max-width: var(--logo-max-w, 260px);
+    object-fit: contain;
+  }
+
+  @media (min-width: 640px) {
+    .brand-logo {
+      height: var(--logo-h-desktop, 6rem);
+    }
+  }
 }

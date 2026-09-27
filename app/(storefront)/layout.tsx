@@ -67,6 +67,9 @@ export default async function StorefrontLayout({ children }: { children: React.R
         name: brand.name,
         tagline: brand.tagline,
         logoUrl: brand.logoUrl,
+        logoHeightDesktop: brand.logoHeightDesktop,
+        logoHeightMobile: brand.logoHeightMobile,
+        logoMaxWidth: brand.logoMaxWidth,
         theme: brand.theme ? {
           primaryColor: brand.theme.primaryColor,
           accentColor: brand.theme.accentColor,

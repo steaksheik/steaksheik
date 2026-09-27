@@ -449,6 +449,15 @@ model Brand {
   description String?
   logoUrl     String?
   faviconUrl  String?
+
+  // Logo display size, in CSS pixels. Nullable so an existing tenant keeps the
+  // sizes the header shipped with until someone actually sets one; separate
+  // desktop and mobile values because a logo that reads well in a wide header
+  // will crowd a phone's nav bar at the same height.
+  logoHeightDesktop Int?
+  logoHeightMobile  Int?
+  logoMaxWidth      Int?
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

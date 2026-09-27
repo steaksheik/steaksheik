@@ -34,6 +34,12 @@ const updateSchema = z.object({
   description: z.string().max(2000).optional().nullable(),
   logoUrl: z.string().url().optional().nullable(),
   faviconUrl: z.string().url().optional().nullable(),
+  // Bounded rather than free: a logo tall enough to push the nav off screen,
+  // or small enough to be unreadable, is never what someone meant. null clears
+  // the override and returns the header to its built-in sizing.
+  logoHeightDesktop: z.number().int().min(32).max(240).optional().nullable(),
+  logoHeightMobile: z.number().int().min(24).max(160).optional().nullable(),
+  logoMaxWidth: z.number().int().min(80).max(640).optional().nullable(),
 });
 
 /** PUT /api/v1/branding — update brand settings. */
@@ -53,6 +59,9 @@ export const PUT = withRoute(async (req: NextRequest) => {
       description: body.description,
       logoUrl: body.logoUrl,
       faviconUrl: body.faviconUrl,
+      logoHeightDesktop: body.logoHeightDesktop,
+      logoHeightMobile: body.logoHeightMobile,
+      logoMaxWidth: body.logoMaxWidth,
     },
     include: { assets: { orderBy: { sortOrder: 'asc' } }, theme: true },
   });
