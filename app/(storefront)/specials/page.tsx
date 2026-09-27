@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import { getDefaultTenant, getBrand, getSpecialProducts, formatPrice } from '@/lib/storefront';
 import { getSiteUrl } from '@/lib/seo';
 import { Flame, Tag } from 'lucide-react';
-import { DEFAULT_BACKGROUND } from '../theme-context';
+import { DEFAULT_BACKGROUND, DEFAULT_SECONDARY } from '../theme-context';
+import { surfaceTokens } from '@/lib/theme/colors';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,22 +28,25 @@ export default async function SpecialsPage() {
 
   const accent = brand?.theme?.accentColor ?? '#c9a96e';
   const background = brand?.theme?.backgroundColor ?? DEFAULT_BACKGROUND;
+  const cardBg = brand?.theme?.secondaryColor ?? DEFAULT_SECONDARY;
+  const page = surfaceTokens(background);
+  const card = surfaceTokens(cardBg);
 
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <section className="border-b border-white/5" style={{ backgroundColor: background }}>
+      <section className="border-b" style={{ backgroundColor: background, borderColor: page.border, color: page.text }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 pb-8">
           <span className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: accent }}>Limited Time</span>
           <h1 className="font-heading text-4xl sm:text-5xl font-bold mt-2">Specials</h1>
-          <p className="mt-3 text-white/40 max-w-xl">
+          <p className="mt-3 max-w-xl" style={{ color: page.muted }}>
             Chef&apos;s picks and promotional offers — order while they last.
           </p>
         </div>
       </section>
 
       {/* Product grid */}
-      <section style={{ backgroundColor: background }}>
+      <section style={{ backgroundColor: background, color: page.text }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           {products.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -57,10 +61,11 @@ export default async function SpecialsPage() {
                   <Link
                     key={product.id}
                     href={`/product/${product.slug}`}
-                    className="group flex gap-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:border-white/10 p-4 transition-all hover:bg-white/[0.05]"
+                    className="group flex gap-4 rounded-xl border p-4 transition-all hover:-translate-y-0.5 hover:opacity-95"
+                    style={{ backgroundColor: cardBg, borderColor: card.border, color: card.text }}
                   >
                     {/* Thumbnail */}
-                    <div className="relative h-24 w-24 rounded-lg bg-white/[0.02] overflow-hidden shrink-0">
+                    <div className="relative h-24 w-24 rounded-lg overflow-hidden shrink-0" style={{ backgroundColor: card.subtle }}>
                       {img ? (
                         <img
                           src={img.url}
@@ -69,7 +74,7 @@ export default async function SpecialsPage() {
                         />
                       ) : (
                         <div className="h-full w-full flex items-center justify-center">
-                          <Flame className="h-6 w-6 text-white/10" />
+                          <Flame className="h-6 w-6" style={{ color: card.faint }} />
                         </div>
                       )}
                       <span
@@ -86,17 +91,17 @@ export default async function SpecialsPage() {
                         {product.name}
                       </h3>
                       {product.description && (
-                        <p className="mt-1 text-xs text-white/40 line-clamp-2">{product.description}</p>
+                        <p className="mt-1 text-xs line-clamp-2" style={{ color: card.muted }}>{product.description}</p>
                       )}
                       <div className="mt-2.5 flex items-center gap-2">
                         <span className="text-sm font-bold" style={{ color: accent }}>
                           {hasVariants ? 'from ' : ''}{formatPrice(product.basePrice)}
                         </span>
                         {onSale && (
-                          <span className="text-xs text-white/30 line-through">{formatPrice(compareAt!)}</span>
+                          <span className="text-xs line-through" style={{ color: card.faint }}>{formatPrice(compareAt!)}</span>
                         )}
                         {hasModifiers && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.06] text-white/40">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full" style={{ backgroundColor: card.subtle, color: card.muted }}>
                             customisable
                           </span>
                         )}
@@ -108,8 +113,8 @@ export default async function SpecialsPage() {
             </div>
           ) : (
             <div className="text-center py-20">
-              <Tag className="h-12 w-12 mx-auto text-white/10 mb-4" />
-              <p className="text-white/40">Nothing on special right now — check back soon.</p>
+              <Tag className="h-12 w-12 mx-auto mb-4" style={{ color: page.faint }} />
+              <p style={{ color: page.muted }}>Nothing on special right now — check back soon.</p>
               <Link href="/menu" className="text-sm mt-3 inline-block" style={{ color: accent }}>Browse the full menu</Link>
             </div>
           )}

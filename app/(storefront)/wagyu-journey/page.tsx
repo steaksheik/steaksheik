@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { getSiteUrl } from '@/lib/seo';
 import { getDefaultTenant, getBrand } from '@/lib/storefront';
 import { DEFAULT_ACCENT, DEFAULT_BACKGROUND } from '../theme-context';
+import { surfaceTokens } from '@/lib/theme/colors';
 import { WagyuJourney } from '@/components/sections/WagyuJourney';
 
 export const dynamic = 'force-dynamic';
@@ -31,10 +32,11 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** Full-screen cinematic hero introducing the journey. */
 function JourneyHero({ accent, background, brandName }: { accent: string; background: string; brandName: string }) {
+  const page = surfaceTokens(background);
   return (
     <section
-      className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 text-center text-white"
-      style={{ backgroundColor: background }}
+      className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 text-center"
+      style={{ backgroundColor: background, color: page.text }}
     >
       {/* Atmospheric background wash */}
       <div
@@ -55,7 +57,7 @@ function JourneyHero({ accent, background, brandName }: { accent: string; backgr
           <br />
           Mile Journey
         </h1>
-        <p className="mx-auto mt-8 max-w-xl font-accent text-xl italic text-white/70 sm:text-2xl">
+        <p className="mx-auto mt-8 max-w-xl font-accent text-xl italic sm:text-2xl" style={{ color: page.muted }}>
           Sonny&apos;s story of finding the world&apos;s finest Wagyu.
         </p>
         <div
@@ -63,7 +65,7 @@ function JourneyHero({ accent, background, brandName }: { accent: string; backgr
           style={{ backgroundColor: accent }}
           aria-hidden="true"
         />
-        <p className="mt-10 animate-pulse font-heading text-xs uppercase tracking-[0.3em] text-white/40">
+        <p className="mt-10 animate-pulse font-heading text-xs uppercase tracking-[0.3em]" style={{ color: page.faint }}>
           Scroll to begin
         </p>
       </div>
@@ -76,8 +78,9 @@ function JourneyHero({ accent, background, brandName }: { accent: string; backgr
  * Portrait on the right, "Steak Perfection" letter on the left.
  */
 function SonnyStory({ accent, background, brandName }: { accent: string; background: string; brandName: string }) {
+  const page = surfaceTokens(background);
   return (
-    <section className="relative overflow-hidden py-16 text-white sm:py-24" style={{ backgroundColor: background }}>
+    <section className="relative overflow-hidden py-16 sm:py-24" style={{ backgroundColor: background, color: page.text }}>
       <div className="mx-auto grid max-w-7xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
         {/* Letter */}
         <div className="order-2 lg:order-1">
@@ -93,7 +96,7 @@ function SonnyStory({ accent, background, brandName }: { accent: string; backgro
             Perfection
           </h2>
 
-          <div className="mt-8 space-y-4 text-base leading-relaxed text-white/70 sm:text-lg">
+          <div className="mt-8 space-y-4 text-base leading-relaxed sm:text-lg" style={{ color: page.muted }}>
             <p>
               Welcome to {brandName}, the home of the finest hand-selected,
               free-range, organic grass-fed beef and meats served in the British
@@ -125,10 +128,10 @@ function SonnyStory({ accent, background, brandName }: { accent: string; backgro
           </div>
 
           <div className="mt-8">
-            <p className="font-accent text-2xl font-semibold italic text-white">
+            <p className="font-accent text-2xl font-semibold italic">
               Sonny
             </p>
-            <p className="text-sm text-white/60">Executive Chef &amp; Founder</p>
+            <p className="text-sm" style={{ color: page.muted }}>Executive Chef &amp; Founder</p>
           </div>
         </div>
 

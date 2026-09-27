@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import type { HeroConfig, PromoCard } from '@/lib/storefront';
 import { useCustomer } from '@/lib/customer-context';
 import { useBrandTheme } from './theme-context';
+import { surfaceTokens } from '@/lib/theme/colors';
 import { TurnstileWidget, turnstileConfigured, type TurnstileHandle } from './turnstile-widget';
 import {
   Flame,
@@ -159,7 +160,11 @@ export function HomeClient({
   promoCards?: PromoCard[];
   rewardsEnabled?: boolean;
 }) {
-  const { secondaryColor: CARD_BG, accentColor: ACCENT } = useBrandTheme();
+  const { secondaryColor: CARD_BG, backgroundColor: PAGE_BG, accentColor: ACCENT } = useBrandTheme();
+  // The page canvas was hardcoded white, which made the homepage the one page
+  // that ignored Admin -> Branding -> Background. Text is derived so any
+  // canvas colour stays readable.
+  const page = surfaceTokens(PAGE_BG);
   const soon = (label: string) => toast.info(`${label} — coming soon`);
   const { customer } = useCustomer();
   const rewardsCta = customer
@@ -200,7 +205,7 @@ export function HomeClient({
   };
 
   return (
-    <div className="bg-white text-[#0a0a0a]">
+    <div style={{ backgroundColor: PAGE_BG, color: page.text }}>
       {/* ══ HERO ══ */}
       <section className="relative bg-[#0a0a0a] text-white overflow-hidden">
         <div className="absolute inset-0">
@@ -305,7 +310,7 @@ export function HomeClient({
                   </div>
                   <div>
                     <div className="text-lg font-extrabold leading-none">{tier.tier}</div>
-                    <div className="mt-1 text-xs text-neutral-500">
+                    <div className="mt-1 text-xs" style={{ color: page.muted }}>
                       {tier.threshold === 0 ? 'From your first order' : `${tier.threshold.toLocaleString()}+ points`} · {tier.multiplier} points
                     </div>
                   </div>
@@ -313,7 +318,7 @@ export function HomeClient({
                 <div className="mt-3 h-1.5 w-full rounded-full bg-neutral-200">
                   <div className="h-full rounded-full" style={{ width: `${Math.max(8, (tier.threshold / MAX_TIER_THRESHOLD) * 100)}%`, backgroundColor: ACCENT }} />
                 </div>
-                <p className="mt-1.5 text-[11px] text-neutral-500">{tier.perk}</p>
+                <p className="mt-1.5 text-[11px]" style={{ color: page.muted }}>{tier.perk}</p>
               </div>
             ))}
           </div>
@@ -336,7 +341,7 @@ export function HomeClient({
       {featured.length > 0 && (
         <section className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
           <h2 className="font-heading text-2xl font-extrabold">{featuredTitle.toUpperCase()}</h2>
-          {featuredSubtitle && <p className="mt-1 text-sm text-neutral-500">{featuredSubtitle}</p>}
+          {featuredSubtitle && <p className="mt-1 text-sm" style={{ color: page.muted }}>{featuredSubtitle}</p>}
           <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {featured.map((p) => (
               <div key={p.id} className="group overflow-hidden rounded-xl text-white" style={{ backgroundColor: CARD_BG }}>
@@ -398,7 +403,7 @@ export function HomeClient({
             <div key={t} className="flex flex-col">
               <Icon className="h-8 w-8" style={{ color: ACCENT }} strokeWidth={1.4} />
               <h3 className="mt-3 text-xs font-bold uppercase tracking-wide">{t}</h3>
-              <p className="mt-1 text-xs text-neutral-500">{s}</p>
+              <p className="mt-1 text-xs" style={{ color: page.muted }}>{s}</p>
             </div>
           ))}
         </div>
@@ -535,7 +540,7 @@ export function HomeClient({
         <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
           <div>
             <h2 className="font-heading text-2xl font-extrabold">JOIN THE {brandName.toUpperCase()} FAMILY</h2>
-            <p className="mt-2 text-sm text-neutral-500 max-w-md">Be the first to know about new menu items, special offers and exclusive rewards.</p>
+            <p className="mt-2 text-sm max-w-md" style={{ color: page.muted }}>Be the first to know about new menu items, special offers and exclusive rewards.</p>
           </div>
           <form onSubmit={submitNewsletter} className="flex flex-col gap-3">
             <div className="flex flex-col sm:flex-row gap-3">
@@ -544,14 +549,16 @@ export function HomeClient({
                 value={nlName}
                 onChange={(e) => setNlName(e.target.value)}
                 placeholder="Your name"
-                className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
+                className="flex-1 rounded-md border px-4 py-3 text-sm outline-none"
+                style={{ borderColor: page.border, color: page.text, backgroundColor: 'transparent' }}
               />
               <input
                 type="email"
                 value={nlEmail}
                 onChange={(e) => setNlEmail(e.target.value)}
                 placeholder="Your email"
-                className="flex-1 rounded-md border border-neutral-300 px-4 py-3 text-sm outline-none focus:border-[#c9a96e] focus:ring-1 focus:ring-[#c9a96e]"
+                className="flex-1 rounded-md border px-4 py-3 text-sm outline-none"
+                style={{ borderColor: page.border, color: page.text, backgroundColor: 'transparent' }}
               />
               <button
                 type="submit"
@@ -570,7 +577,7 @@ export function HomeClient({
               onError={() => setNlTurnstileFailed(true)}
             />
             {turnstileConfigured && !nlToken && !nlTurnstileFailed && (
-              <p className="text-xs text-neutral-500">Verifying you&apos;re human…</p>
+              <p className="text-xs" style={{ color: page.muted }}>Verifying you&apos;re human…</p>
             )}
           </form>
         </div>
