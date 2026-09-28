@@ -5,7 +5,8 @@ import { getDefaultTenant, getBrand, getProductBySlug, formatPrice } from '@/lib
 import { getSiteUrl, jsonLdScriptProps } from '@/lib/seo';
 import { ChevronLeft, Flame } from 'lucide-react';
 import { ProductConfigurator } from './product-configurator';
-import { DEFAULT_BACKGROUND } from '../../theme-context';
+import { DEFAULT_BACKGROUND, DEFAULT_SECONDARY } from '../../theme-context';
+import { surfaceTokens } from '@/lib/theme/colors';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,9 @@ export default async function ProductPage({
 
   const accent = brand?.theme?.accentColor ?? '#c9a96e';
   const background = brand?.theme?.backgroundColor ?? DEFAULT_BACKGROUND;
+  const cardBg = brand?.theme?.secondaryColor ?? DEFAULT_SECONDARY;
+  const page = surfaceTokens(background);
+  const card = surfaceTokens(cardBg);
 
   // Serialize Decimal fields to numbers for client component
   const serializedVariants = product.variants.map(v => ({
@@ -96,24 +100,24 @@ export default async function ProductPage({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: background }}>
+    <div className="min-h-screen" style={{ backgroundColor: background, color: page.text }}>
       <script {...jsonLdScriptProps(productJsonLd)} />
       {/* Breadcrumb */}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6">
-        <div className="flex items-center gap-2 text-sm text-white/40">
-          <Link href="/menu" className="hover:text-white transition-colors flex items-center gap-1">
+        <div className="flex items-center gap-2 text-sm" style={{ color: page.muted }}>
+          <Link href="/menu" className="transition-colors flex items-center gap-1 hover:opacity-70">
             <ChevronLeft className="h-3.5 w-3.5" />
             Menu
           </Link>
           <span>/</span>
           <Link
             href={`/menu?category=${product.category.slug}`}
-            className="hover:text-white transition-colors"
+            className="transition-colors hover:opacity-70"
           >
             {product.category.name}
           </Link>
           <span>/</span>
-          <span className="text-white/60">{product.name}</span>
+          <span style={{ color: page.text }}>{product.name}</span>
         </div>
       </div>
 
@@ -121,7 +125,7 @@ export default async function ProductPage({
         <div className="grid gap-10 lg:grid-cols-2">
           {/* Image gallery */}
           <div>
-            <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-white/[0.03] border border-white/[0.06]">
+            <div className="aspect-[4/3] rounded-2xl overflow-hidden border" style={{ backgroundColor: card.subtle, borderColor: page.border }}>
               {product.images[0] ? (
                 <img
                   src={product.images[0].url}
@@ -130,14 +134,14 @@ export default async function ProductPage({
                 />
               ) : (
                 <div className="h-full w-full flex items-center justify-center">
-                  <Flame className="h-16 w-16 text-white/10" />
+                  <Flame className="h-16 w-16" style={{ color: page.faint }} />
                 </div>
               )}
             </div>
             {product.images.length > 1 && (
               <div className="mt-3 grid grid-cols-4 gap-2">
                 {product.images.slice(1, 5).map((img) => (
-                  <div key={img.id} className="aspect-square rounded-lg overflow-hidden bg-white/[0.03] border border-white/[0.06]">
+                  <div key={img.id} className="aspect-square rounded-lg overflow-hidden border" style={{ backgroundColor: card.subtle, borderColor: page.border }}>
                     <img src={img.url} alt={img.altText ?? ''} className="h-full w-full object-cover" />
                   </div>
                 ))}
@@ -159,7 +163,7 @@ export default async function ProductPage({
             <h1 className="font-heading text-3xl sm:text-4xl font-bold">{product.name}</h1>
 
             {product.description && (
-              <p className="mt-4 text-white/50 leading-relaxed">{product.description}</p>
+              <p className="mt-4 leading-relaxed" style={{ color: page.muted }}>{product.description}</p>
             )}
 
             {(() => {
@@ -184,8 +188,8 @@ export default async function ProductPage({
                       ))}
                     </div>
                   )}
-                  <p className="mt-3 text-xs text-white/40">
-                    <span className="text-white/60">Allergens:</span>{' '}
+                  <p className="mt-3 text-xs" style={{ color: page.muted }}>
+                    <span style={{ color: page.text }}>Allergens:</span>{' '}
                     {allergens.length > 0 ? allergens.join(', ') : 'None declared'}
                   </p>
                 </div>
@@ -198,7 +202,7 @@ export default async function ProductPage({
                 {serializedVariants.length > 0 ? 'from ' : ''}{formatPrice(product.basePrice)}
               </span>
               {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.basePrice) && (
-                <span className="ml-3 text-lg text-white/30 line-through">
+                <span className="ml-3 text-lg line-through" style={{ color: page.faint }}>
                   {formatPrice(product.compareAtPrice)}
                 </span>
               )}

@@ -3,6 +3,8 @@
 import { useState, useMemo } from 'react';
 import { Check } from 'lucide-react';
 import { useCart } from '@/lib/cart-context';
+import { useBrandTheme } from '../../theme-context';
+import { surfaceTokens } from '@/lib/theme/colors';
 
 interface Variant {
   id: string;
@@ -48,6 +50,11 @@ export function ProductConfigurator({
   currency?: string;
 }) {
   const { addItem, loading: cartLoading } = useCart();
+  // Sits on the page canvas, so its labels and option borders follow the
+  // Background colour rather than the white they used to hardcode.
+  const { backgroundColor } = useBrandTheme();
+  const page = surfaceTokens(backgroundColor);
+  const unselectedOption = { borderColor: page.border, backgroundColor: page.subtle };
   const defaultVariant = variants.find(v => v.isDefault) ?? variants[0];
   const [selectedVariant, setSelectedVariant] = useState<string | null>(defaultVariant?.id ?? null);
   const [selectedModifiers, setSelectedModifiers] = useState<Record<string, Set<string>>>(() => {
@@ -98,7 +105,7 @@ export function ProductConfigurator({
       {/* Variants */}
       {variants.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Select Preparation</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: page.text }}>Select Preparation</h3>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {variants.map((v) => (
               <button
@@ -108,7 +115,7 @@ export function ProductConfigurator({
                 style={
                   selectedVariant === v.id
                     ? { borderColor: accent, backgroundColor: `${accent}15` }
-                    : { borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }
+                    : unselectedOption
                 }
               >
                 <span className="font-medium">{v.name}</span>
@@ -125,13 +132,13 @@ export function ProductConfigurator({
       {modifierGroups.map((group) => (
         <div key={group.id}>
           <div className="flex items-center gap-2 mb-3">
-            <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider">{group.name}</h3>
+            <h3 className="text-sm font-semibold uppercase tracking-wider" style={{ color: page.text }}>{group.name}</h3>
             {group.isRequired && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400">Required</span>}
-            <span className="text-[10px] text-white/30">
+            <span className="text-[10px]" style={{ color: page.faint }}>
               {group.maxSelect === 1 ? 'Choose one' : `Choose up to ${group.maxSelect}`}
             </span>
           </div>
-          {group.description && <p className="text-xs text-white/30 mb-3">{group.description}</p>}
+          {group.description && <p className="text-xs mb-3" style={{ color: page.faint }}>{group.description}</p>}
           <div className="space-y-2">
             {group.modifiers.map((mod) => {
               const isSelected = selectedModifiers[group.id]?.has(mod.id) ?? false;
@@ -143,13 +150,13 @@ export function ProductConfigurator({
                   style={
                     isSelected
                       ? { borderColor: accent, backgroundColor: `${accent}15` }
-                      : { borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }
+                      : unselectedOption
                   }
                 >
                   <span className="font-medium">{mod.name}</span>
                   <span className="flex items-center gap-2">
                     {mod.priceAdjustment > 0 && (
-                      <span className="text-white/40">+{formatPrice(mod.priceAdjustment, currency)}</span>
+                      <span style={{ color: page.muted }}>+{formatPrice(mod.priceAdjustment, currency)}</span>
                     )}
                     {isSelected && <Check className="h-3.5 w-3.5" style={{ color: accent }} />}
                   </span>
@@ -161,9 +168,9 @@ export function ProductConfigurator({
       ))}
 
       {/* Total + Add to order (placeholder) */}
-      <div className={hasOptions ? 'pt-4 border-t border-white/10' : ''}>
+      <div className={hasOptions ? 'pt-4 border-t' : ''} style={hasOptions ? { borderColor: page.border } : undefined}>
         <div className="flex items-center justify-between mb-4">
-          <span className="text-sm text-white/50">Total</span>
+          <span className="text-sm" style={{ color: page.muted }}>Total</span>
           <span className="text-2xl font-bold" style={{ color: accent }}>{formatPrice(totalPrice, currency)}</span>
         </div>
         <button
