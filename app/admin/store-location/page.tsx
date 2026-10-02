@@ -56,6 +56,9 @@ export default function StoreLocationPage() {
   const [form, setForm] = useState({ email: '', phone: '', address: '', city: '', postcode: '', country: 'GB' });
   const [coords, setCoords] = useState<{ latitude: number | null; longitude: number | null }>({ latitude: null, longitude: null });
   const [radiusMiles, setRadiusMiles] = useState('');
+  // What is actually stored, so the page can tell an edited-but-unsaved
+  // radius apart from a saved one.
+  const [savedRadius, setSavedRadius] = useState<number | null>(null);
   const [radiusSaving, setRadiusSaving] = useState(false);
   const [hours, setHours] = useState<HoursState>(DEFAULT_HOURS);
   const [hoursSaving, setHoursSaving] = useState(false);
@@ -109,7 +112,10 @@ export default function StoreLocationPage() {
       }
       if (radiusRes.ok) {
         const json = await radiusRes.json();
-        if (typeof json.data?.value === 'number') setRadiusMiles(String(json.data.value));
+        if (typeof json.data?.value === 'number') {
+          setRadiusMiles(String(json.data.value));
+          setSavedRadius(json.data.value);
+        }
       }
       if (socialRes.ok) {
         const json = await socialRes.json();
@@ -125,6 +131,9 @@ export default function StoreLocationPage() {
 
   async function save() {
     setSaving(true);
+    // The radius is its own setting: save an edited radius whatever happens to
+    // the address save below, so it is never silently lost.
+    if (radiusUnsaved) await saveRadius();
     try {
       const res = await fetch('/api/v1/contact-info', {
         method: 'PUT',
@@ -221,11 +230,12 @@ export default function StoreLocationPage() {
     }
   }
 
-  async function saveRadius() {
+  /** Save the radius. Returns whether it was saved. */
+  async function saveRadius(): Promise<boolean> {
     const n = Number(radiusMiles);
     if (!radiusMiles.trim() || !Number.isFinite(n) || n <= 0) {
       toast.error('Enter a delivery radius greater than 0');
-      return;
+      return false;
     }
     setRadiusSaving(true);
     try {
@@ -237,13 +247,21 @@ export default function StoreLocationPage() {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error?.message);
-      toast.success(`Delivery radius set to ${n} miles`);
+      setSavedRadius(json.data?.value ?? n);
+      toast.success(`Delivery radius saved: ${json.data?.value ?? n} miles`);
+      return true;
     } catch (e) {
-      toast.error((e as Error).message || 'Failed to save');
+      toast.error((e as Error).message || 'Failed to save the delivery radius');
+      return false;
     } finally {
       setRadiusSaving(false);
     }
   }
+
+  // The radius has its own Save button, but someone who edits it and then
+  // presses the main Save should not lose it: the main Save used to ignore
+  // the radius field entirely, silently discarding what had been typed.
+  const radiusUnsaved = radiusMiles.trim() !== '' && Number(radiusMiles) !== savedRadius;
 
   if (!canRead) {
     return <div className="p-6 text-muted-foreground">You don&apos;t have permission to view store location settings.</div>;
@@ -336,8 +354,11 @@ export default function StoreLocationPage() {
                 className="w-32"
               />
             </div>
+            {radiusUnsaved && (
+              <span className="pb-2 text-xs font-medium text-amber-600" role="status">Unsaved</span>
+            )}
             {canWrite && (
-              <Button onClick={saveRadius} disabled={radiusSaving} size="sm">
+              <Button onClick={() => { void saveRadius(); }} disabled={radiusSaving} size="sm">
                 {radiusSaving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
                 Save
               </Button>

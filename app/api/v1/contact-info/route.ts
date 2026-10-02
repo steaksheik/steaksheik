@@ -31,7 +31,9 @@ const dayHoursSchema = z.object({
 });
 
 const updateSchema = z.object({
-  email: z.string().email().optional().nullable(),
+  // An empty email field means "no email". It used to fail validation and
+  // block the whole Store Location save with "Request validation failed".
+  email: z.preprocess((v) => (typeof v === 'string' && v.trim() === '' ? null : v), z.string().email().optional().nullable()),
   phone: z.string().max(30).optional().nullable(),
   address: z.string().max(300).optional().nullable(),
   city: z.string().max(120).optional().nullable(),
