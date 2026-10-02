@@ -27,6 +27,7 @@ export class GoogleMapsAdapter extends BaseAdapter implements IMapsAdapter {
       );
       const data = (await res.json().catch(() => ({}))) as {
         status?: string;
+        error_message?: string;
         results?: { geometry?: { location?: { lat: number; lng: number } }; formatted_address?: string }[];
       };
       const first = data.results?.[0];
@@ -36,12 +37,14 @@ export class GoogleMapsAdapter extends BaseAdapter implements IMapsAdapter {
           lat: first.geometry.location.lat,
           lng: first.geometry.location.lng,
           formattedAddress: first.formatted_address ?? address,
+          status: 'OK',
         };
       }
-      return { success: false, lat: 0, lng: 0, formattedAddress: address };
+      logger.warn('Google Maps geocode returned no location', { status: data.status, error: data.error_message });
+      return { success: false, lat: 0, lng: 0, formattedAddress: address, status: data.status ?? 'UNKNOWN', error: data.error_message };
     } catch (err) {
       logger.error('Google Maps geocode failed', { error: String(err) });
-      return { success: false, lat: 0, lng: 0, formattedAddress: address };
+      return { success: false, lat: 0, lng: 0, formattedAddress: address, status: 'NETWORK_ERROR', error: String(err) };
     }
   }
 
@@ -89,8 +92,14 @@ export class NoopMapsAdapter extends FallbackAdapter implements IMapsAdapter {
   readonly name = 'No-op Maps (fallback)';
   readonly serviceType: PlatformServiceType = 'MAPS';
 
+  /**
+   * No Maps provider is configured. Reports failure, honestly: this used to
+   * return success with coordinates 0,0, which made the admin say "geocoded"
+   * while saving a point in the Atlantic, and would have made checkout's
+   * delivery-radius check reject every customer as thousands of miles away.
+   */
   async geocode(address: string): Promise<GeocodingResult> {
-    logger.info('[MAPS:noop] Mock geocode', { address });
-    return { success: true, lat: 0, lng: 0, formattedAddress: address };
+    logger.info('[MAPS:noop] geocode requested but no Maps provider is configured', { address });
+    return { success: false, lat: 0, lng: 0, formattedAddress: address, status: 'NOT_CONFIGURED' };
   }
 }

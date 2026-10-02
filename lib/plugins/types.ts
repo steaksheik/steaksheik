@@ -111,6 +111,13 @@ export interface GeocodingResult {
   lat: number;
   lng: number;
   formattedAddress?: string;
+  /**
+   * Why a lookup failed, so callers can tell the admin what actually went
+   * wrong instead of guessing. Google's own status (ZERO_RESULTS,
+   * REQUEST_DENIED, OVER_QUERY_LIMIT...), or NOT_CONFIGURED / NETWORK_ERROR.
+   */
+  status?: string;
+  error?: string;
 }
 export interface IMapsAdapter extends IPluginAdapter {
   geocode(address: string): Promise<GeocodingResult>;

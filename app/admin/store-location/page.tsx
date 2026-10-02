@@ -136,12 +136,22 @@ export default function StoreLocationPage() {
       if (!json.success) throw new Error(json.error?.message);
       const c = json.data.contactInfo as ContactInfo;
       setCoords({ latitude: c.latitude, longitude: c.longitude });
+      // Say what actually happened, rather than always blaming the API key.
+      const status: string | null = json.data.geocodeStatus ?? null;
       if (json.data.geocoded) {
         toast.success('Store location saved and geocoded');
-      } else if (form.address) {
-        toast.warning('Saved, but couldn’t geocode the address — add a Google Maps API key in Platform Services');
-      } else {
+      } else if (!form.address || status === 'UNCHANGED') {
         toast.success('Saved');
+      } else if (status === 'NOT_CONFIGURED') {
+        toast.warning('Saved, but couldn’t geocode the address: Maps isn’t set up. Add a Google Maps API key in Platform Services and make sure it’s enabled.');
+      } else if (status === 'ZERO_RESULTS') {
+        toast.warning('Saved, but Google couldn’t find that address. Check the street, city and postcode, then save again.');
+      } else if (status === 'REQUEST_DENIED') {
+        toast.warning('Saved, but Google refused the lookup. Check the API key’s restrictions allow the Geocoding API.');
+      } else if (status === 'OVER_QUERY_LIMIT') {
+        toast.warning('Saved, but Google’s quota was exceeded, or billing isn’t enabled on the Google Cloud project.');
+      } else {
+        toast.warning(`Saved, but the address couldn’t be geocoded (${status ?? 'unknown error'}). Please try saving again.`);
       }
     } catch (e) {
       toast.error((e as Error).message || 'Failed to save');

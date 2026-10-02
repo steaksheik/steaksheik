@@ -66,19 +66,33 @@ export const PUT = withRoute(async (req: NextRequest) => {
   let latitude = before?.latitude ?? null;
   let longitude = before?.longitude ?? null;
   let geocoded = false;
+  // Why the address wasn't geocoded, for the admin message. UNCHANGED means
+  // the address and its existing coordinates were simply kept.
+  let geocodeStatus: string | null = null;
+
+  // Look the address up when it changed, AND whenever there are no real
+  // coordinates yet. Previously an unchanged address was never looked up, so
+  // a store saved before Maps was set up could never be geocoded without
+  // editing its address, and the admin was told to add a key it already had.
+  const hasCoordinates = latitude != null && longitude != null && (latitude !== 0 || longitude !== 0);
 
   const fullAddress = [body.address ?? before?.address, body.city ?? before?.city, body.postcode ?? before?.postcode, 'UK']
     .filter(Boolean)
     .join(', ');
 
-  if (addressChanged && fullAddress) {
+  if (fullAddress && (addressChanged || !hasCoordinates)) {
     const maps = await getConfiguredMaps();
     const result = await maps.geocode(fullAddress);
     if (result.success) {
       latitude = result.lat;
       longitude = result.lng;
       geocoded = true;
+      geocodeStatus = 'OK';
+    } else {
+      geocodeStatus = (maps as { isFallback?: boolean }).isFallback ? 'NOT_CONFIGURED' : result.status ?? 'UNKNOWN';
     }
+  } else if (hasCoordinates) {
+    geocodeStatus = 'UNCHANGED';
   }
 
   const contactInfo = await prisma.contactInfo.upsert({
@@ -110,5 +124,5 @@ export const PUT = withRoute(async (req: NextRequest) => {
     userAgent: ctx.userAgent,
   });
 
-  return ok({ contactInfo, geocoded });
+  return ok({ contactInfo, geocoded, geocodeStatus });
 });
